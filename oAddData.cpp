@@ -6,37 +6,34 @@ oAddData::oAddData(Operation * mOpp){
 }
 
 int oAddData::tSize(){
-    return colCount;
+    return opp->tSize();
 }
 
 void oAddData::open(){
     opp->open();
-    printf("Source data:\n");
-    opp->print();
     tuple = new int[opp->tSize()];
 }
 
-void oAddData::print(){
+void oAddData::print(int * mPtr){
+    printf("AD: ");
     for (int i = 0; i < opp->tSize(); i++){
-        printf("[%d]", tuple[i]);            
+        printf("[%d]", mPtr[i]);            
         fflush(stdout);
     }
     printf("\n");
 }
 
 int * oAddData::next(){
-    int * mTup;
     int * mVal;
     if ((mVal = opp->next()) != nullptr) {
         for (int i = 0; i < opp->tSize(); i++){
-            tuple[i] += mVal[i];
+            tuple[i] += mVal[i];            
         }
+        oAddData::print(tuple);
         return tuple;
     } else {
         return nullptr;
     }
-    
-    
 }
 
 void oAddData::close(){    

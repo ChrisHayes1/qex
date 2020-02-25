@@ -2,6 +2,7 @@
 #include <string>
 #include "oGenData.h"
 #include "oAddData.h"
+#include "oMultData.h"
 
 int main(int argc, char *argv[])
 {
@@ -11,21 +12,22 @@ int main(int argc, char *argv[])
     }
     //Opp to generate data
     oGenData mGeneratedData(std::stoi(argv[1]),std::stoi(argv[2]));
+    //Opp to multiple data
+    oMultData mMultipliedData(&mGeneratedData);
     //Opp to aggregate data    
-    oAddData mAggData(&mGeneratedData);
+    oAddData mAggData(&mMultipliedData);
     
     //Open aggreate
     mAggData.open();
     
     //Itterate through aggregate
-    int * mVal;   
     printf("\nAgg Steps\n");
     while (mAggData.next() != nullptr){
-        mAggData.print();
+        //mAggData.print();
     }
 
     printf("\nFinal Row Aggregates\n");
-    mAggData.print();    
+    //mAggData.print();    
 
     mGeneratedData.close();    
 

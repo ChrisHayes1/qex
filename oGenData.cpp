@@ -1,8 +1,10 @@
 
 #include <fstream>
+#include <cstdlib>
+#include <ctime> 
 #include "oGenData.h"
 
-
+const int MAX_RAND = 254;
 
 oGenData::oGenData(int numRows, int numCols){
     rowCount = numRows;
@@ -19,16 +21,22 @@ int oGenData::tSize(){
 }
 
 void oGenData::open(){
+    //seed rand
+    srand(time(0));
     //Generate array
     for (int r = 0; r < rowCount; r++){
         for (int c = 0; c < colCount; c++){
-            tuples[r][c] = (r+1)*(c+1);
+            tuples[r][c] = rand()%MAX_RAND;
+            //tuples[r][c] = (r+1)*(c+1);
             //printf("...x[%d][%d] = %d\n", r, c, tuples[r][c]);
         }
     }
+
+    printf("Source data:\n");
+    print(nullptr);
 }
 
-void oGenData::print(){
+void oGenData::print(int * nvm){
     //Generate array
     for (int r = 0; r < rowCount; r++){
         for (int c = 0; c < colCount; c++){

@@ -13,10 +13,8 @@ class oAddData: public Operation {
         //Class specific
         oAddData(Operation *);  
         int tSize();  
-        void print();
+        void print(int *);
     private:
-        int colCount;
-        int current;
         Operation * opp;
         int * tuple;
 };

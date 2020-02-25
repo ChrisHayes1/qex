@@ -1,7 +1,7 @@
 CC=g++
 
-qexmake: oGenData.cpp oAddData.cpp qex.cpp
-	$(CC) -o qex qex.cpp oGenData.cpp oAddData.cpp
+qexmake: oGenData.cpp oAddData.cpp oMultData.cpp qex.cpp
+	$(CC) -o qex qex.cpp oGenData.cpp oAddData.cpp oMultData.cpp
 
 
 clean:
