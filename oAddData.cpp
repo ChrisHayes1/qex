@@ -29,14 +29,15 @@ int * oAddData::next(){
         for (int i = 0; i < opp->tSize(); i++){
             tuple[i] += mVal[i];            
         }        
+        //print(tuple);
         return tuple;
     } else {
         return nullptr;
     }
 }
 
-void oAddData::close(){    
-    opp->close();
+void oAddData::close(){        
     oAddData::print(tuple);
+    opp->close();
     delete [] tuple;    
 }
