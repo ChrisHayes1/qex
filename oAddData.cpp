@@ -1,19 +1,45 @@
 #include <fstream>
 #include "oAddData.h"
 
+/**************
+ * Constructor
+ *************/
+
 oAddData::oAddData(Operation * mOpp){
     opp = mOpp;
 }
 
-int oAddData::tSize(){
-    return opp->tSize();
-}
+/**************
+ * Interface
+ *************/
 
 void oAddData::open(){
     opp->open();
     tuple = new int[opp->tSize()];
 }
 
+int * oAddData::next(){
+    int * mVal =  opp->next();
+    if (mVal) {
+        for (int i = 0; i < opp->tSize(); i++)
+            tuple[i] += mVal[i];                            
+        return tuple;
+    } 
+    return mVal;
+}
+
+void oAddData::close(){        
+    oAddData::print(tuple);
+    opp->close();
+    delete [] tuple;    
+}
+
+int oAddData::tSize(){
+    return opp->tSize();
+}
+/**************
+ * Helper function
+ *************/
 void oAddData::print(int * mPtr){
     printf("AD: ");
     for (int i = 0; i < opp->tSize(); i++){
@@ -21,23 +47,4 @@ void oAddData::print(int * mPtr){
         fflush(stdout);
     }
     printf("\n");
-}
-
-int * oAddData::next(){
-    int * mVal;
-    if ((mVal = opp->next()) != nullptr) {
-        for (int i = 0; i < opp->tSize(); i++){
-            tuple[i] += mVal[i];            
-        }        
-        //print(tuple);
-        return tuple;
-    } else {
-        return nullptr;
-    }
-}
-
-void oAddData::close(){        
-    oAddData::print(tuple);
-    opp->close();
-    delete [] tuple;    
 }

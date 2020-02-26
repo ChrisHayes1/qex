@@ -18,7 +18,7 @@ class oGenData: public Operation {
         int rowCount;
         int colCount;
         int current;
-        int ** tuples;
+        int * tuple;
 };
 
 

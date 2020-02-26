@@ -6,10 +6,15 @@
 
 int main(int argc, char *argv[])
 {
+    //Verify input
     if (argc != 3) {
         printf("Usage: qex ROWS COLS");
         return 1;
     }
+
+    /***************
+     * Build Query Tree
+     **************/
     //Opp to generate data
     oGenData mGeneratedData(std::stoi(argv[1]),std::stoi(argv[2]));
     //Opp to multiple data
@@ -17,18 +22,17 @@ int main(int argc, char *argv[])
     //Opp to aggregate data    
     oAddData mAggData(&mMultipliedData);
     
-    //Open aggreate
+    /**************
+     * Open aggreate
+     **************/
     mAggData.open();
     
-    //Itterate through aggregate
-    printf("\nAgg Steps\n");
-    while (mAggData.next() != nullptr){
-        //mAggData.print();
-    }
+    /**************
+     * Itterate through aggregate
+     ************/
+    while (mAggData.next());
 
-    printf("\nFinal Row Aggregates\n");
-    //mAggData.print();    
-
+    //Close out tree
     mAggData.close();    
 
     return 0;
