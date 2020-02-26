@@ -28,8 +28,7 @@ int * oAddData::next(){
     if ((mVal = opp->next()) != nullptr) {
         for (int i = 0; i < opp->tSize(); i++){
             tuple[i] += mVal[i];            
-        }
-        oAddData::print(tuple);
+        }        
         return tuple;
     } else {
         return nullptr;
@@ -37,6 +36,7 @@ int * oAddData::next(){
 }
 
 void oAddData::close(){    
-    delete [] tuple;
     opp->close();
+    oAddData::print(tuple);
+    delete [] tuple;    
 }

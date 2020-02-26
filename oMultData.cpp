@@ -30,7 +30,7 @@ int * oMultData::next(){
             //tuple[i]  = mVal[i] * 2;
             mVal[i] *= 2;
         }
-        print(mVal);
+        //print(mVal);
         return mVal;
     } else {
         return nullptr;

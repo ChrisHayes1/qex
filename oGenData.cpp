@@ -4,7 +4,7 @@
 #include <ctime> 
 #include "oGenData.h"
 
-const int MAX_RAND = 254;
+const int MAX_RAND = 5;
 
 oGenData::oGenData(int numRows, int numCols){
     rowCount = numRows;
@@ -32,8 +32,7 @@ void oGenData::open(){
         }
     }
 
-    printf("Source data:\n");
-    print(nullptr);
+    
 }
 
 void oGenData::print(int * nvm){
@@ -54,6 +53,9 @@ int * oGenData::next(){
 }
 
 void oGenData::close(){    
+    //printf("Source data:\n");
+    //print(nullptr);
+
     for (int i = 0; i < rowCount; i++){
         delete [] tuples[i];
     }

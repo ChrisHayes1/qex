@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     printf("\nFinal Row Aggregates\n");
     //mAggData.print();    
 
-    mGeneratedData.close();    
+    mAggData.close();    
 
     return 0;
 }
