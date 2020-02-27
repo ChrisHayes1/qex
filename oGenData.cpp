@@ -10,7 +10,7 @@
  * Constants
  *************/
 
-const int MAX_RAND = 5;
+const int MAX_RAND = 15;
 
 /**************
  * Constructor
@@ -37,6 +37,7 @@ int * oGenData::next(){
         current++;
         for (int c = 0; c < colCount; c++)
             tuple[c] = rand()%MAX_RAND;                
+        print(tuple);
         return tuple;
     } 
     return nullptr;        
@@ -55,16 +56,9 @@ int oGenData::tSize(){
  *************/
 
 void oGenData::print(int * nvm){
-    //Generate array
-    // for (int r = 0; r < rowCount; r++){
-    //     for (int c = 0; c < colCount; c++){
-    //         printf("[%d]", tuples[r][c]);
-    //     }
-    //     printf("\n");
-    // }
-    printf("GN: ");
+    printf("$$: ");
     for (int i = 0; i < tSize(); i++){
-        printf("[%d]", nvm[i]);            
+        printf("[%*d]", 3, nvm[i]);            
         fflush(stdout);
     }
     printf("\n");

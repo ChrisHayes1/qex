@@ -3,42 +3,39 @@
  ######################*/
 
 #include <fstream>
-#include "oMultData.h"
+#include "oManyToMany.h"
 
 /**************
  * Constructor
  *************/
 
-oMultData::oMultData(Operation * mOpp){
+oManyToMany::oManyToMany(Operation * mOpp, int * (*nextFxn)(int *, Operation *)){
     opp = mOpp;
+    mNextFxn = nextFxn;
 }
 
 /**************
  * Interface
  *************/
 
-void oMultData::open(){
+void oManyToMany::open(){
     opp->open();    
     //tuple = new int[opp->tSize()];
 }
 
-int * oMultData::next(){
+int * oManyToMany::next(){
     int * mVal = opp->next();
-    if (mVal){
-        for (int i = 0; i < opp->tSize(); i++)
-            mVal[i] *= 2;        
-        print(mVal);
-    } 
-        
+    mNextFxn(mVal, opp);
+    if(mVal) print (mVal);
     return mVal;
 }
 
-void oMultData::close(){    
+void oManyToMany::close(){    
     //delete [] tuple;
     opp->close();
 }
 
-int oMultData::tSize(){
+int oManyToMany::tSize(){
     return opp->tSize();
 }
 
@@ -46,7 +43,7 @@ int oMultData::tSize(){
  * Helper
  *************/
 
-void oMultData::print(int * mPtr){
+void oManyToMany::print(int * mPtr){
     printf("*2: ");
     for (int i = 0; i < opp->tSize(); i++){
         printf("[%*d]", 3, mPtr[i]);            
