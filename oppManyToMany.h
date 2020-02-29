@@ -3,7 +3,7 @@
 #ifndef O_MANY_TO_MANY_H
 #define O_MANY_TO_MANY_H
 
-class oManyToMany: public Operation {
+class oppManyToMany: public Operation {
     public:
         //interface
         void open();
@@ -11,14 +11,14 @@ class oManyToMany: public Operation {
         void close();
 
         //Class specific
-        oManyToMany(Operation *, int * (*)(int *, Operation *));  
+        oppManyToMany(Operation *, int * (*)(int *, Operation *));  
         int tSize();  
         void print(int *);
     private:
-        int colCount;
-        int current;
+        //int colCount;
+        //int current;
         Operation * opp;
-        int * tuple;
+        //int * tuple;
         int * (*mNextFxn)(int *, Operation *);
 };
 

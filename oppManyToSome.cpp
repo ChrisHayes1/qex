@@ -3,13 +3,13 @@
  ######################*/
 
 #include <fstream>
-#include "oManyToMany.h"
+#include "oppManyToSome.h"
 
 /**************
  * Constructor
  *************/
 
-oManyToMany::oManyToMany(Operation * mOpp, int * (*nextFxn)(int *, Operation *)){
+oppManyToSome::oppManyToSome(Operation * mOpp, int * (*nextFxn)(int *, Operation *, int *)){
     opp = mOpp;
     mNextFxn = nextFxn;
 }
@@ -18,24 +18,27 @@ oManyToMany::oManyToMany(Operation * mOpp, int * (*nextFxn)(int *, Operation *))
  * Interface
  *************/
 
-void oManyToMany::open(){
+void oppManyToSome::open(){
     opp->open();    
-    //tuple = new int[opp->tSize()];
+    tuple = new int[opp->tSize()];
 }
 
-int * oManyToMany::next(){
+int * oppManyToSome::next(){
     int * mVal = opp->next();
-    mNextFxn(mVal, opp);
+    mVal = mNextFxn(mVal, opp, tuple);
     if(mVal) print (mVal);
     return mVal;
 }
 
-void oManyToMany::close(){    
-    //delete [] tuple;
+void oppManyToSome::close(){    
+    printf("Final output\n");
+    print(tuple);
+    fflush(stdout);
     opp->close();
+    delete [] tuple; 
 }
 
-int oManyToMany::tSize(){
+int oppManyToSome::tSize(){
     return opp->tSize();
 }
 
@@ -43,11 +46,11 @@ int oManyToMany::tSize(){
  * Helper
  *************/
 
-void oManyToMany::print(int * mPtr){
-    printf("*2: ");
+void oppManyToSome::print(int * mPtr){
+    printf("+=: ");
     for (int i = 0; i < opp->tSize(); i++){
         printf("[%*d]", 3, mPtr[i]);            
         fflush(stdout);
     }
-    printf("\n");
+    printf("\n\n");
 }
