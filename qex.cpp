@@ -1,12 +1,33 @@
 #include <fstream>
 #include <string>
 #include "oGenData.h"
-#include "oAddData.h"
-#include "oMultData.h"
 #include "oppManyToMany.h"
 #include "oppManyToSome.h"
 
 //int * multFxn(int * mVal, Operation * opp);
+
+/**
+ * I should send args in as void argv[]
+ * Should allow Open() fxn as well
+ * I want them somewhere not with main.  In oppX class?
+ * or fxn catalog?
+ * Also, the three fxns below are nearly identicle
+ * We may be able to move more to the global op
+ * and just have a simple fxn carry out the rest
+ * 
+ ***/
+
+//Generate tuples
+// int * addFxn(int * mVal, Operation * opp, int * tuple){
+//     if (current < rowCount) {       
+//         current++;
+//         for (int c = 0; c < colCount; c++)
+//             tuple[c] = rand()%MAX_RAND;                
+//         print(tuple);
+//         return tuple;
+//     } 
+//     return nullptr; 
+// }
 
 //Add tuples together
 int * addFxn(int * mVal, Operation * opp, int * tuple){
@@ -51,20 +72,11 @@ int main(int argc, char *argv[])
      * Build Query Tree
      **************/
     //Opp to generate data
+    srand(time(0));  
     oGenData mGeneratedData(std::stoi(argv[1]),std::stoi(argv[2]));
     oppManyToMany mMultData(&mGeneratedData, multFxn);
     oppManyToSome mAggData(&mMultData, maxFxn);
-    //oppManyToSome mAggData(&mAggData, addFxn);
-    
-    
-    
-    //Opp to multiple data
-    //oMultData mMultipliedData(&mGeneratedData);
-    //Opp to multiple data 2
-    //oMultData mMultipliedData2(&mMultipliedData);
-    //Opp to aggregate data    
-    //oAddData mAggData(&mMultData);
-    
+    //oppManyToSome mAggData(&mAggData, addFxn);    
     
     /**************
      * Open aggreate
