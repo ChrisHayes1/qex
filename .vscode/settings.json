@@ -42,6 +42,7 @@
         "iterator": "cpp",
         "memory_resource": "cpp",
         "random": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "chrono": "cpp"
     }
 }

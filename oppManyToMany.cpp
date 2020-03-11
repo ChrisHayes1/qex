@@ -26,7 +26,7 @@ void oppManyToMany::open(){
 int * oppManyToMany::next(){
     int * mVal = opp->next();
     mNextFxn(mVal, opp);
-    if(mVal) print (mVal);
+    //if(mVal) print (mVal);
     return mVal;
 }
 

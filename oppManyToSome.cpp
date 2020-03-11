@@ -26,7 +26,7 @@ void oppManyToSome::open(){
 int * oppManyToSome::next(){
     int * mVal = opp->next();
     mVal = mNextFxn(mVal, opp, tuple);
-    if(mVal) print (mVal);
+    //if(mVal) print (mVal);
     return mVal;
 }
 
@@ -52,5 +52,5 @@ void oppManyToSome::print(int * mPtr){
         printf("[%*d]", 3, mPtr[i]);            
         fflush(stdout);
     }
-    printf("\n\n");
+    printf("\n");
 }

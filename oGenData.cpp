@@ -10,7 +10,7 @@
  * Constants
  *************/
 
-const int MAX_RAND = 15;
+const int MAX_RAND = 30;
 
 /**************
  * Constructor
@@ -28,7 +28,7 @@ oGenData::oGenData(int numRows, int numCols){
 
 void oGenData::open(){
     //seed rand    
-    srand(time(0));    
+    srand(5);    
     tuple = new int [colCount];
 }
 
@@ -43,7 +43,7 @@ int * oGenData::next(){
     return nullptr;        
 }
 
-void oGenData::close(){    
+void oGenData::close(){   
     delete tuple;
 }
 
