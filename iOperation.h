@@ -3,11 +3,11 @@
 
 class Operation {
     public:
-        virtual void open() = 0;
+        virtual int open() = 0;
         virtual int * next() = 0;
         virtual void close() = 0;
         virtual int tSize() = 0;     
-        virtual void print(int *) = 0;          
+        virtual void print(int *, int, const char *) = 0;          
 };
 
 #endif

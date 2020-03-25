@@ -1,7 +1,7 @@
 CC=g++
 
-qexmake: oGenData.cpp oGenDataFull.cpp  oppManyToMany.cpp oppManyToSome.cpp qex.cpp
-	$(CC) -o qex qex.cpp oGenData.cpp oGenDataFull.cpp oppManyToMany.cpp oppManyToSome.cpp 
+qexmake: oSpool.cpp oHashJoin.cpp static.cpp oFScan.cpp oStdOp.cpp
+	$(CC) -o qex qex.cpp oSpool.cpp oHashJoin.cpp static.cpp oFScan.cpp oStdOp.cpp
 
 
 gen: gen_data.cpp
