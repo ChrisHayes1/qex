@@ -1,11 +1,6 @@
 #################
-# Compiled code 
-#################
-*.exe
-
-
-#################
-# Ignore directory
+# Ignore Specific files
 #################
 
 /old/
+qex
