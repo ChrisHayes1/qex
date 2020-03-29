@@ -14,7 +14,7 @@
 #include "oSpool.h"
 #include "oStdOp.h"
 //#include "oppManyToSome.h"
-#include "oHashJoin.h"
+//#include "oHashJoin.h"
 #include "iOperation.h"
 
 
@@ -33,6 +33,7 @@ const int M_NULL = -1;
 //Dataset Manipulation
 int genData(string, int, int, int, string, int); //generate new data
 int readData(string); //print out data file
+int summarizeData(string);
 
 //Menu
 void init_menu();
@@ -45,7 +46,7 @@ void runQryB(string, int, int);
 void runQryC(string, string, int, int, int);
 
 //Query Fxns
-int * countFxn(Operation *, int *);
+int * countFxn(Operation *, int *, int *);
 int * addFxn(int *, Operation *, int *);
 int * maxFxn(int *, Operation *, int *);
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[])
 # Menu
 ############################*/
 
-const int MENU_COUNT = 6;
+const int MENU_COUNT = 7;
 
 struct menu_item{
     string intro;
@@ -77,9 +78,10 @@ struct menu_item{
 const int M_EXIT = 0;
 const int M_GEN_DATA = 1;
 const int M_READ_DATA = 2;
-const int M_QRY_A = 3;
-const int M_QRY_B = 4;
-const int M_QRY_C = 5;
+const int M_SUMMARIZE_DATA = 3;
+const int M_QRY_A = 4;
+const int M_QRY_B = 5;
+const int M_QRY_C = 6;
 
 
 void init_menu(){
@@ -96,6 +98,10 @@ void init_menu(){
     menu_items[M_READ_DATA].intro = "Print Data file   ";
     menu_items[M_READ_DATA].usage = "<file_name>";
     menu_items[M_READ_DATA].param_count = 1;
+    //Summarize data files
+    menu_items[M_SUMMARIZE_DATA].intro = "Sumarize Data file   ";
+    menu_items[M_SUMMARIZE_DATA].usage = "<file_name>";
+    menu_items[M_SUMMARIZE_DATA].param_count = 1;
     //Run Query 1
     menu_items[M_QRY_A].intro = "QRY: SELECT COUNT (*) as Z FROM T";
     menu_items[M_QRY_A].usage = "<file name A>";
@@ -182,6 +188,9 @@ void menu(){
             case M_READ_DATA:
                 readData(tokens[1]);
                 break;
+            case M_SUMMARIZE_DATA:
+                summarizeData(tokens[1]);
+                break;                
             case M_QRY_A:
                 runQryA(tokens[1]);
                 break;
@@ -288,6 +297,36 @@ int readData(string fileName){
 }
 
 /*############################
+# Summarize Data
+############################*/
+int summarizeData(string fileName){
+    //open file
+    ifstream file;
+    file.open(fileName, ios::binary);
+    if (!file){
+        cout << "Unable to generate file";
+        return 1;
+    }
+    int cSize;
+    int rSize;
+    file >> rSize >> cSize;
+    cout << "Dimensions are " << rSize << " rows by " << cSize << " columns\n";
+    int next; //Store next value
+    int count = 0;
+    int rowCount = 0;
+    while (file.good()){
+        file >> next;
+        count ++;
+        if (count == cSize) {
+            count = 0;
+            rowCount++;
+        }
+    }
+    cout << "True Row Size = " << rowCount << "\n";
+    return 0;
+}
+
+/*############################
 # Queries
 ############################*/
 /**
@@ -296,7 +335,8 @@ int readData(string fileName){
 void runQryA(string inFile){
     oFScan fileA(inFile);
     oSpool spoolA(&fileA);
-    oStdOp countA(&spoolA, countFxn, 1); //updastream op, fxn to run, size of new tupple
+    int countAargs [2] = {1, 1};
+    oStdOp countA(&spoolA, countFxn, countAargs); //updastream op, fxn to run, size of new tupple
 
     countA.open();
     int * temp = countA.next();
@@ -409,7 +449,7 @@ vector<string> split(const string& s, char delimiter)
 
 //Count total number of tuples, return count only
 //Add tuples together
-int * countFxn(Operation * op, int * mOut){
+int * countFxn(Operation * op, int * mOut, int * mIgnore){
     mOut[0] = 0;
     int * mInput = op->next();
     if (mInput) {

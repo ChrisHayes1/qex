@@ -9,10 +9,10 @@
  * Constructor
  *************/
 
-oStdOp::oStdOp(Operation * mOpp, int * (*nextFxn)(Operation *, int *), int mColCount){
-    colCount = mColCount;
+oStdOp::oStdOp(Operation * mOpp, int * (*mNextFxn)(Operation *, int *, int *), int * mArgs){
+    args = mArgs;
     op = mOpp;
-    mNextFxn = nextFxn;
+    nextFxn = mNextFxn;
 }
 
 /**************
@@ -21,17 +21,19 @@ oStdOp::oStdOp(Operation * mOpp, int * (*nextFxn)(Operation *, int *), int mColC
 
 int oStdOp::open(){
     op->open();    
-    mOut = new int[colCount];
+    if (args != nullptr && args[1] != -1) colCount = args[1];
+    else colCount = op->tSize();  
+    outTuple = new int[colCount];
 }
 
 int * oStdOp::next(){
-    mOut = mNextFxn(op, mOut);
-    return mOut;
+    outTuple = nextFxn(op, outTuple, args);
+    return outTuple;
 }
 
 void oStdOp::close(){    
     op->close();
-    delete [] mOut; 
+    delete [] outTuple; 
 }
 
 int oStdOp::tSize(){

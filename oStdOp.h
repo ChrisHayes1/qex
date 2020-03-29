@@ -11,15 +11,20 @@ class oStdOp: public Operation {
         void close();
 
         //Class specific
-        oStdOp(Operation *, int * (*)(Operation *, int *), int);  
+        //Upstream op, fxn to be called, # columns in output
+        oStdOp(Operation *, int * (*)(Operation *, int *, int *), int *);  
         int tSize();  
         void print(int *, int, const char *);        
     private:
-        int colCount;
+        int * args;
         //int current;
         Operation * op;
-        int * mOut;
-        int * (*mNextFxn)(Operation *, int *);
+        int * outTuple;
+        int colCount;
+        //Fxn sent in - Upstream op, output tuple, Optional args (# args, args)
+        //Args sent in --> if not null, 1st item = # args, 2nd = col count of 
+        //output tuple. If 2nd col should be upstream tuple size send in as -1
+        int * (*nextFxn)(Operation *, int *, int *);
 };
 
 
