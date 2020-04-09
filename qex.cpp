@@ -47,7 +47,7 @@ void runQryB(string, int, int);
 void runQryC(string, string, int, int, int);
 
 //Query Fxns
-
+int * displayFxn(Operation *, int *, int *);
 int * singleLineJoin(Operation *, int *, int *);
 int * countFxn(Operation *, int *, int *);
 int * projectFxn(Operation *, int *, int *);
@@ -344,20 +344,26 @@ void runQryA(string inFile){
     oSpool spoolA(&fileA);
     oStdOp countA(&spoolA, countFxn, 1, nullptr); //updastream op, fxn to run, size of new tupple
 
-    countA.open();
-    int * temp = countA.next();
-    cout << "Z = [" << temp[0] << "]\n";
-    fflush(stdout);
-
-    // while (temp) {
-    //     cout << "Z = [" << temp[0] << "]\n";
-    //     fflush(stdout);
-    //     temp = countA.next();
-    // };
-
-
+    // countA.open();
+    // int * temp = countA.next();
+    // cout << "Z = [" << temp[0] << "]\n";
     // fflush(stdout);
-    countA.close();
+
+    // // while (temp) {
+    // //     cout << "Z = [" << temp[0] << "]\n";
+    // //     fflush(stdout);
+    // //     temp = countA.next();
+    // // };
+
+
+    // // fflush(stdout);
+    // countA.close();
+
+    //display results
+    oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    displayResult.open();
+    displayResult.next();
+    displayResult.close();
 
 }
 /**
@@ -401,26 +407,10 @@ void runQryB(string inFile, int sumColA, int sumColB){
     
     //Remove null from A
     int rmvA [2] = {1, 1};
-    oStdOp removeNullA(&projectA, removeNullFxn, 1, rmvA);
-    //removeNullA.setPrint(true);
+    oStdOp removeNullA(&projectA, removeNullFxn, 1, rmvA);    
 
-    // //Count total number of args in A
-    // int countAargs [2] = {1, 1};
-    // Count A needs to be joined with final response
+    //Count total number of args in A
     oStdOp countA(&removeNullA, countFxn, 1, nullptr); 
-    //oStdOp countA(&removeNullA, addFxn, -1, nullptr); 
- 
-    //Execute Branch A count;
-    // cout << "Executing branch A\n";
-    // countA.open();
-    // countA.setPrint(true);
-    // int * cntX;
-    // cntX = countA.next();
-    // //while (countA.next());
-    // //countA.close();
-    // fflush(stdout);
-
-    countA.setPrint(true);
 
 
     /*****
@@ -435,50 +425,25 @@ void runQryB(string inFile, int sumColA, int sumColB){
     int rmvB [3] = {1, 1};
     oStdOp removeNullB(&projectB, removeNullFxn, 1, rmvB);    
 
-    // //Count total number of args in A
-    // int countAargs [2] = {1, 1};
-    // Count A needs to be joined with final response
+    //Count total number of args in B
     oStdOp countB(&removeNullB, countFxn, 1, nullptr); 
-    //oStdOp countB(&removeNullB, addFxn, 1, nullptr); 
-    countB.setPrint(true);
-    // cout << "Executing branch B\n";
-    // countB.open();
-    // countB.setPrint(true);
-    // while (countB.next());
-    // countB.close();
-    // fflush(stdout);
- 
-    // // //Display count;
-    // // // countA.open();
-    // // // countA.setPrint(true);
-    // // // int * temp = countA.next();
-    // // // while (countA.next());
-    // countA.close();
-
 
     /*****
      * Join A and B
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    cout << "Preping join\n";
-    fflush(stdout);
     Operation * joinOps[2];
     joinOps[0] = &countA;
     joinOps[1] = &countB;
     int jArgs [2] = {1, 2}; //send in exepcted # of operations
     oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
-    cout << "Opening join\n";
-    fflush(stdout);
-    cartJoin.open();
-    cartJoin.setPrint(true);
-    cout << "Running join\n";
-    fflush(stdout);
-    cartJoin.next();
-    //while (cartJoin.next());
-    cout << "Closing join\n";
-    fflush(stdout);
-    cartJoin.close();
+    
+    //display results
+    oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+    displayResult.open();
+    displayResult.next();
+    displayResult.close();
 }
 /**
  * If spooling can be used by multiple objects, then it needs to keep
@@ -557,6 +522,25 @@ vector<string> split(const string& s, char delimiter)
  ***/
 
 /**
+ * Simply displays output
+ ***/
+int * displayFxn(Operation * me, int * mOut, int * mIgnore){
+    Operation * op = me->getUpsOp();
+    me->setPrint(true);
+    int * mInput = op->next();
+    if (mInput) {   
+        cout << "   $T";
+        for (int i = 0; i < me->tSize(); i++){
+            mOut[i] = mInput[i];
+        }
+        return mOut;
+    }     
+    me->setPrint(false);
+    return mInput;
+}
+
+
+/**
  * single line cartesian join
  * Assumes each input only sends in one item
  ***/
@@ -566,26 +550,16 @@ int * singleLineJoin(Operation * me, int * mOut, int * mArgs){
     //Itterate through ops
     int count = 0;
     for (int i = 0; i < mArgs[1]; i++){
-        cout << "Running join on op " << i << "\n";
-        fflush(stdout);
-
-        int * mInput  = op[i]->next();
-        cout << "...got next\n";
-        fflush(stdout);
-        
+        int * mInput  = op[i]->next();        
         if (mInput){
             //Itterate through tuples in op and add to output
-            cout << "...adding to response\n";
-            fflush(stdout);
+
             for (int c = 0; c < op[i]->tSize(); c++){
-                cout << "......count " << count << "\n";
-                fflush(stdout);
+
                 mOut[count] = mInput[c];
                 count++;
             }
         } else {
-            cout << "...returning null\n";
-            fflush(stdout);
             return nullptr;
         }       
     }    

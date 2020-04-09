@@ -25,8 +25,6 @@ oJoin::oJoin(Operation ** mOps, int * (*mNextFxn)(Operation *, int *, int *), in
 
 int oJoin::open(){
     int getSize = colCount;
-    cout << "...getSize start = " << colCount << "\n";
-    fflush(stdout);
     if (getSize == -1){
         colCount = 0;
         // Find true out tuple size
@@ -34,14 +32,7 @@ int oJoin::open(){
             ops[i]->open();
             colCount += ops[i]->tSize();
         }
-    } else {
-        cout << " else on oJoin::open()";
-        fflush(stdout);
-
     }
-
-    cout << "...getSize start = " << colCount << "\n";
-    fflush(stdout);
 
     outTuple = new int[colCount];
 }

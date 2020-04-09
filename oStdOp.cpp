@@ -48,14 +48,9 @@ int oStdOp::tSize(){
 
 void oStdOp::print(int * mPtr, int size, const char * mStr){
     printf("%s: ", mStr);
-    //printf("size = %d: ", size);
-    fflush(stdout);
     for (int i = 0; i < size; i++){
-       //printf("[%*d]", 3, mPtr[i]);            
-       printf("mOut[%d] = ", i);
-       fflush(stdout);
-       printf("%d ", mPtr[i]);
-       fflush(stdout);
+        printf("[%*d]", 3, mPtr[i]);            
+        fflush(stdout);
     }
     printf("\n");
 }

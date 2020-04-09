@@ -55,9 +55,7 @@ int * oSpool::next(){
             
             return mTuple;
         }
-        cout << "SPOOL REWIND\n";
         rewind();
-        fflush(stdout);
         return nullptr;
     } else {
         //Rewound
@@ -66,8 +64,6 @@ int * oSpool::next(){
             current = current->next;
             return temp;
         }     
-        cout << "SPOOL REWIND\n";
-        fflush(stdout);
         rewind();
         return nullptr;        
     }
@@ -75,18 +71,11 @@ int * oSpool::next(){
 }
 
 void oSpool::close(){    
-
-    //printsList();
     if (op){
-        cout << "SPOOL CLOSING\n";
-        fflush(stdout);
         close_list(); //Do we need to move?
         op->close();
         op = nullptr;
-    }
-
-    
-    
+    }    
 }
 
 int oSpool::tSize(){
