@@ -1,9 +1,13 @@
 #include "iOperation.h"
+#include <fstream>
+#include <iostream>
 
-#ifndef O_MANY_TO_N_H
-#define O_MANY_TO_N_H
+using namespace std;
 
-class oStdOp: public Operation {
+#ifndef O_JOIN_H
+#define O_JOIN_H
+
+class oJoin: public Operation {
     public:
         //interface
         int open();
@@ -12,17 +16,18 @@ class oStdOp: public Operation {
 
         //Class specific
         //Upstream op, fxn to be called, # columns in output, fxn args
-        oStdOp(Operation *, int * (*)(Operation *, int *, int *), int, int *);  
+        //fxnArgs - #args, #operators, col count, additional args
+        oJoin(Operation **, int * (*)(Operation *, int *, int *), int, int *);  
         int tSize();  
         void print(int *, int, const char *);        
         void setPrint(bool);
         bool getPrint();
-        Operation * getUpsOp(); //returns upstream operation        
-        Operation ** getUpsOps();
+        Operation * getUpsOp();
+        Operation ** getUpsOps(); //returns upstream operation
     private:
         int * args;
         //int current;
-        Operation * op;
+        Operation ** ops;
         int * outTuple;
         int colCount;
         bool showPrintout;
@@ -30,6 +35,5 @@ class oStdOp: public Operation {
         //Args sent in --> if not null, 1st item = # args, followed by args
         int * (*nextFxn)(Operation *, int *, int *);
 };
-
 
 #endif

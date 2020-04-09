@@ -17,16 +17,18 @@ oSpool::oSpool(Operation * mOp){
     op = mOp;
     setPrint(false);
     rewound = false;
+    isOpened = false;
 }
 
 /**************
  * Interface
  *************/
 int oSpool::open(){   
-    if (!rewound){
+    if (!isOpened){
         op->open();
         colSize = op->tSize();
         init_list();
+        isOpened = true;
     }
 }
 
@@ -53,6 +55,9 @@ int * oSpool::next(){
             
             return mTuple;
         }
+        cout << "SPOOL REWIND\n";
+        rewind();
+        fflush(stdout);
         return nullptr;
     } else {
         //Rewound
@@ -60,13 +65,12 @@ int * oSpool::next(){
             int * temp = current->tuple;
             current = current->next;
             return temp;
-        }        
-
+        }     
+        cout << "SPOOL REWIND\n";
+        fflush(stdout);
+        rewind();
         return nullptr;        
     }
-   
-
-    //
     
 }
 
@@ -74,10 +78,14 @@ void oSpool::close(){
 
     //printsList();
     if (op){
-        close_list();
+        cout << "SPOOL CLOSING\n";
+        fflush(stdout);
+        close_list(); //Do we need to move?
         op->close();
         op = nullptr;
     }
+
+    
     
 }
 
@@ -88,6 +96,10 @@ int oSpool::tSize(){
 //Returns upstream operator
 Operation * oSpool::getUpsOp(){
     return op;
+}
+
+Operation ** oSpool::getUpsOps(){
+    return nullptr;
 }
 
 bool oSpool::getPrint(){

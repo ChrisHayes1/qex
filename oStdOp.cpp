@@ -71,3 +71,6 @@ Operation * oStdOp::getUpsOp(){
     return op;
 }
 
+Operation ** oStdOp::getUpsOps(){
+    return nullptr;
+}

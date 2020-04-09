@@ -58,6 +58,10 @@ Operation * oFScan::getUpsOp(){
     return nullptr;
 }
 
+Operation ** oFScan::getUpsOps(){
+    return nullptr;
+}
+
 bool oFScan::getPrint(){
     return showPrintout;
 }

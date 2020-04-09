@@ -23,6 +23,7 @@ class oSpool: public Operation {
         oSpool(Operation *);  //Need a pointer at init
         int tSize();  
         Operation * getUpsOp(); //returns upstream operation
+        Operation ** getUpsOps();
         void setPrint(bool);
         bool getPrint();
         void print(int *, int, const char *);
@@ -39,6 +40,7 @@ class oSpool: public Operation {
         node * current;
         bool showPrintout;
         bool rewound;
+        bool isOpened;
 
         void init_list();
         void enQ(int *);

@@ -18,6 +18,7 @@ class oFScan: public Operation {
         oFScan(string);  
         int tSize();  
         Operation * getUpsOp(); //returns upstream operation
+        Operation ** getUpsOps();
         void print(int *, int, const char *);
         void setPrint(bool);
         bool getPrint();
