@@ -12,6 +12,7 @@
  *************/
 oFScan::oFScan(string fileName){
     mFileName = fileName;
+    setPrint(false);
 }
 
 /**************
@@ -53,6 +54,17 @@ int oFScan::tSize(){
     return colSize;
 }
 
+Operation * oFScan::getUpsOp(){
+    return nullptr;
+}
+
+bool oFScan::getPrint(){
+    return showPrintout;
+}
+void oFScan::setPrint(bool sPrint){
+    showPrintout = sPrint;
+}
+
 /**************
  * Helper
  *************/
@@ -64,3 +76,5 @@ void oFScan::print(int * mPtr, int size, const char * mStr){
     }
     printf("\n");
 }
+
+

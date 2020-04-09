@@ -7,7 +7,10 @@ class Operation {
         virtual int * next() = 0;
         virtual void close() = 0;
         virtual int tSize() = 0;     
-        virtual void print(int *, int, const char *) = 0;          
+        virtual Operation * getUpsOp() = 0;
+        virtual void print(int *, int, const char *) = 0;   
+        virtual void setPrint(bool) = 0;  
+        virtual bool getPrint() = 0;  
 };
 
 #endif

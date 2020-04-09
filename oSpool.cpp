@@ -1,5 +1,8 @@
 /*######################
- # Multiplies each tuple by 2
+ # Spool
+ #      On first call generates linked list of tuples, returns tuple it pulls in
+ #      Can then rewind, at which point next() starts returning items from
+ #      linked list.  
  ######################*/
 
 // #include <fstream>
@@ -12,15 +15,19 @@
  *************/
 oSpool::oSpool(Operation * mOp){
     op = mOp;
+    setPrint(false);
+    rewound = false;
 }
 
 /**************
  * Interface
  *************/
-int oSpool::open(){    
-    op->open();
-    colSize = op->tSize();
-    init_list();
+int oSpool::open(){   
+    if (!rewound){
+        op->open();
+        colSize = op->tSize();
+        init_list();
+    }
 }
 
 
@@ -30,20 +37,34 @@ int * oSpool::next(){
     //sent, but the tuple it is getting sent keeps changing.  So all the downstream
     //pointers are pointing to the same stack memory in the previous app.  I need
     //to transfer the filestream data to its own location in the heap
-    int * temp;
-    temp = op->next();
+    if (!rewound){
+         int * temp;
+        temp = op->next();
 
-    //
-    if (temp){
-        int * mTuple = new int [colSize];
-        for (int c = 0; c < colSize; c++){
-            mTuple[c] = temp[c];
+        //
+        if (temp){
+            int * mTuple = new int [colSize];
+            for (int c = 0; c < colSize; c++){
+                mTuple[c] = temp[c];
+            }
+            if (mTuple && showPrintout) print(mTuple, colSize, "-->");
+            if (mTuple) enQ(mTuple);
+            //print(mTuple, colSize, "   tContents");
+            
+            return mTuple;
         }
-        if (mTuple) enQ(mTuple);
-        //print(mTuple, colSize, "   tContents");
-        return mTuple;
+        return nullptr;
+    } else {
+        //Rewound
+        if (current){
+            int * temp = current->tuple;
+            current = current->next;
+            return temp;
+        }        
+
+        return nullptr;        
     }
-    return nullptr;
+   
 
     //
     
@@ -52,15 +73,31 @@ int * oSpool::next(){
 void oSpool::close(){    
 
     //printsList();
-
-    close_list();
-
-    op->close();
+    if (op){
+        close_list();
+        op->close();
+        op = nullptr;
+    }
+    
 }
 
 int oSpool::tSize(){
     return colSize;
 }
+
+//Returns upstream operator
+Operation * oSpool::getUpsOp(){
+    return op;
+}
+
+bool oSpool::getPrint(){
+    return showPrintout;
+}
+
+void oSpool::setPrint(bool sPrint){
+    showPrintout = sPrint;
+}
+
 
 /**************
  * Helper
@@ -74,8 +111,9 @@ void oSpool::print(int * mPtr, int size, const char * mStr){
     printf("\n");
 }
 
-void oSpool::rewind(int colNum){
-    
+void oSpool::rewind(){
+    rewound = true;
+    current = head;
 }
 
 /**************

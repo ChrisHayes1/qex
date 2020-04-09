@@ -25,7 +25,7 @@ using namespace std::chrono;
 # Constants
 ############################*/
 const int M_NULL = -1;
-
+const int ARG_START = 1;
 /*############################
 # Declare functions
 ############################*/
@@ -47,8 +47,11 @@ void runQryC(string, string, int, int, int);
 
 //Query Fxns
 int * countFxn(Operation *, int *, int *);
-int * addFxn(int *, Operation *, int *);
-int * maxFxn(int *, Operation *, int *);
+int * projectFxn(Operation *, int *, int *);
+int * removeNullFxn(Operation *, int *, int *);
+
+int * addFxn(Operation *, int *, int *);
+// int * maxFxn(int *, Operation *, int *);
 
 //Helper Functions
 std::vector<std::string> split(const std::string&, char);
@@ -330,13 +333,13 @@ int summarizeData(string fileName){
 # Queries
 ############################*/
 /**
+ * Qry 1 in paper
  * SELECT COUNT (*) as Z FROM T
  ***/
 void runQryA(string inFile){
     oFScan fileA(inFile);
     oSpool spoolA(&fileA);
-    int countAargs [2] = {1, 1};
-    oStdOp countA(&spoolA, countFxn, countAargs); //updastream op, fxn to run, size of new tupple
+    oStdOp countA(&spoolA, countFxn, 1, nullptr); //updastream op, fxn to run, size of new tupple
 
     countA.open();
     int * temp = countA.next();
@@ -352,24 +355,105 @@ void runQryA(string inFile){
 
 }
 /**
+ * Qry 13 in paper
+ * SELECT COUNT (colA) as X, COUNT (colB) as Y from tblA
  * 
+ *                     Scan --> Bring into memory or spool
+ *                       |    
+ *                    Project (colA, colB)               
+ *                       |
+ *                     Spool
+ *              _________|__________
+ *             |                    |
+ *          Project A             Project B
+ *             |                    |
+ *        Filter Null A        Filter Null B
+ *             |                    |
+ *           Count A             Count B
+ *             |____________________|
+ *                       |
+ *                   Join Result
  ***/
 void runQryB(string inFile, int sumColA, int sumColB){
-    // 1) Spool tables a and b
-    // oFScan fileA(inFile);
-    // oSpool spoolA(&fileA);
-    // oStdOp removeNull(&spoolA);
+    //Scan in file
+    oFScan fileA(inFile); 
+    //Project file down to A, B
+    int prjAB [3] = {2, sumColA, sumColB};
+    oStdOp projectAB(&fileA, projectFxn, 2, prjAB);
+    sumColA = 1;
+    sumColB = 2;
+    
+    //Spool A, B
+    oSpool spool(&projectAB);
+    
+    /*****
+     * Branch A
+     ****/
+    //Project down to just A
+    int prjA [2] = {1, sumColA};
+    oStdOp projectA(&spool, projectFxn, 1, prjA);
+    
+    //Remove null from A
+    int rmvA [2] = {1, 1};
+    oStdOp removeNullA(&projectA, removeNullFxn, 1, rmvA);
+    //removeNullA.setPrint(true);
+
+    // //Count total number of args in A
+    // int countAargs [2] = {1, 1};
+    // Count A needs to be joined with final response
+    oStdOp countA(&removeNullA, countFxn, 1, nullptr); 
+    //oStdOp countA(&removeNullA, addFxn, -1, nullptr); 
+ 
+    //Execute Branch A count;
+    cout << "Executing branch A\n";
+    countA.open();
+    countA.setPrint(true);
+    int * cntX;
+    cntX = countA.next();
+    //while (countA.next());
+    //countA.close();
+    fflush(stdout);
 
 
+    /*****
+     * Branch b
+     ****/
+    spool.rewind();    
+    //Project down to just A
+    int prjB [2] = {1, sumColB};
+    oStdOp projectB(&spool, projectFxn, 1, prjB);
 
-    // spoolA.open();
-    // spoolA.rewind(sumColA);
+    //Remove null from A
+    int rmvB [3] = {1, 1};
+    oStdOp removeNullB(&projectB, removeNullFxn, 1, rmvB);    
 
-    // while (spoolA.next());
+    // //Count total number of args in A
+    // int countAargs [2] = {1, 1};
+    // Count A needs to be joined with final response
+    oStdOp countB(&removeNullB, countFxn, 1, nullptr); 
+    //oStdOp countB(&removeNullB, addFxn, 1, nullptr); 
+
+    cout << "Executing branch B\n";
+    countB.open();
+    countB.setPrint(true);
+    while (countB.next());
+    countB.close();
+    fflush(stdout);
+ 
+    // //Display count;
+    // // countA.open();
+    // // countA.setPrint(true);
+    // // int * temp = countA.next();
+    // // while (countA.next());
+    countA.close();
 
 
-    // fflush(stdout);
-    // spoolA.close();
+    /*****
+     * Join A and B
+     * May need to think about how this would work with a group by
+     * Would this join be different than a join between two tables?
+     ****/    
+
 }
 /**
  * If spooling can be used by multiple objects, then it needs to keep
@@ -432,7 +516,7 @@ vector<string> split(const string& s, char delimiter)
 
 
 /*############################
-# Query Functions
+# StdOp Functions
 ############################*/
 //int * multFxn(int * mVal, Operation * opp);
 
@@ -448,19 +532,71 @@ vector<string> split(const string& s, char delimiter)
  ***/
 
 //Count total number of tuples, return count only
-//Add tuples together
-int * countFxn(Operation * op, int * mOut, int * mIgnore){
-    mOut[0] = 0;
+//Single next call itterates through all upstream data
+int * countFxn(Operation * me, int * mOut, int * mIgnore){
+    Operation * op = me->getUpsOp();
+    mOut[0] = 0;    
     int * mInput = op->next();
     if (mInput) {
         while (mInput){
             mOut[0] ++;                            
             mInput = op->next();
         }   
+        if (op->getPrint()) cout << "   countFxn";
         return mOut;
     }     
     return mInput;
 }
+
+//Count total number of tuples, return count only
+//Single next call itterates through all upstream data
+int * addFxn(Operation * me, int * mOut, int * mIgnore){
+    Operation * op = me->getUpsOp();
+    mOut[0] = 0;    
+    int * mInput = op->next();
+    if (mInput) {
+        while (mInput){
+            mOut[0] += mInput[0];                            
+            mInput = op->next();
+        }   
+        if (op->getPrint()) cout << "   countFxn";
+        return mOut;
+    }     
+    return mInput;
+}
+
+//Project tuple to limit rows
+//mArgs = tot args, columns we want to project from in to out
+int * projectFxn(Operation * me, int * mOut, int * mArgs){    
+    Operation * op = me->getUpsOp();
+    int * mInput = op->next();    
+    if (mInput) {
+        for (int i = 0; i < mArgs[0]; i++){            
+            //cout << " mArgs[" << i  + ARG_START << "] = " << mArgs[i];
+            //cout << " mInput[" << mArgs[i+ARG_START] -1 << "] = " << mInput[mArgs[i] + ARG_START];
+            mOut[i] = mInput[mArgs[i+ARG_START] -1];
+        }
+        if (op->getPrint()) cout << "   prj";
+        return mOut;
+    }
+    return mInput;
+}
+
+//Removes incoming 
+//mArgs = tot args, col we are checking null on
+//args = Column to look at for removal
+int * removeNullFxn(Operation * me, int * mOut, int * mArgs){   
+    Operation * op = me->getUpsOp();
+    int * mInput = op->next();
+    while (mInput)
+    {
+        if (mInput && mInput[mArgs[ARG_START]-1] != M_NULL) break;
+        mInput = op->next();
+    } 
+    if (op->getPrint()) cout << "   rmvNull";
+    return mInput;    
+}
+
 
 // //Add tuples together
 // int * addFxn(int * mVal, Operation * opp, int * tuple){

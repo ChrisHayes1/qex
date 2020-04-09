@@ -9,10 +9,12 @@
  * Constructor
  *************/
 
-oStdOp::oStdOp(Operation * mOpp, int * (*mNextFxn)(Operation *, int *, int *), int * mArgs){
+oStdOp::oStdOp(Operation * mOpp, int * (*mNextFxn)(Operation *, int *, int *), int mColCount, int * mArgs){
     args = mArgs;
     op = mOpp;
     nextFxn = mNextFxn;
+    colCount = mColCount;
+    setPrint(false);
 }
 
 /**************
@@ -21,13 +23,13 @@ oStdOp::oStdOp(Operation * mOpp, int * (*mNextFxn)(Operation *, int *, int *), i
 
 int oStdOp::open(){
     op->open();    
-    if (args != nullptr && args[1] != -1) colCount = args[1];
-    else colCount = op->tSize();  
+    if (colCount == -1) colCount = op->tSize();  
     outTuple = new int[colCount];
 }
 
 int * oStdOp::next(){
-    outTuple = nextFxn(op, outTuple, args);
+    outTuple = nextFxn(this, outTuple, args);
+    if (outTuple && showPrintout) print(outTuple, colCount, "-->");
     return outTuple;
 }
 
@@ -46,15 +48,26 @@ int oStdOp::tSize(){
 
 void oStdOp::print(int * mPtr, int size, const char * mStr){
     printf("%s: ", mStr);
-    printf("size = %d: ", size);
+    //printf("size = %d: ", size);
     fflush(stdout);
     for (int i = 0; i < size; i++){
        //printf("[%*d]", 3, mPtr[i]);            
        printf("mOut[%d] = ", i);
        fflush(stdout);
-       printf("%d\n", mPtr[i]);
-        fflush(stdout);
+       printf("%d ", mPtr[i]);
+       fflush(stdout);
     }
     printf("\n");
+}
+
+void oStdOp::setPrint(bool sPrint){
+    showPrintout = sPrint;
+}
+
+bool oStdOp::getPrint(){
+    return showPrintout;
+}
+Operation * oStdOp::getUpsOp(){
+    return op;
 }
 

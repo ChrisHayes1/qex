@@ -17,7 +17,10 @@ class oFScan: public Operation {
         //Class specific
         oFScan(string);  
         int tSize();  
+        Operation * getUpsOp(); //returns upstream operation
         void print(int *, int, const char *);
+        void setPrint(bool);
+        bool getPrint();
         int getFileSize();
     private:
         Operation * op;        
@@ -25,6 +28,7 @@ class oFScan: public Operation {
         ifstream file;
         int colSize;
         int * tuple;
+        bool showPrintout;
 };
 
 
