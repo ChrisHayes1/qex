@@ -43,6 +43,7 @@
         "memory_resource": "cpp",
         "random": "cpp",
         "string": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "regex": "cpp"
     }
 }

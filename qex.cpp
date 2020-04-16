@@ -1,3 +1,11 @@
+/************************
+ * TODO
+ ************************
+ * 1) Merge oJoin and oStdOp, I should be able to do this with one class
+ * 2) Is there a way to remove the size fxn?  Only used on projection?
+ ************************
+
+
 /*############################
 # Includes
 ############################*/
@@ -9,6 +17,7 @@
 #include <vector> 
 #include <sstream>
 #include <unistd.h>
+#include <list>
 
 #include "oFScan.h"
 #include "oSpool.h"
@@ -27,12 +36,12 @@ using namespace std::chrono;
 ############################*/
 const int M_NULL = -1;
 const int ARG_START = 1;
+
 /*############################
 # Declare functions
 ############################*/
-
 //Dataset Manipulation
-int genData(string, int, int, int, string, int); //generate new data
+int genData(string, int, int, int, int, string, int);
 int readData(string); //print out data file
 int summarizeData(string);
 
@@ -44,15 +53,20 @@ void menu();
 //Queries
 void runQryA(string);
 void runQryB(string, int, int);
-void runQryC(string, string, int, int, int);
+void runQryC(string, int, int);
+// void runQryD(string, string, int, int, int);
 
-//Query Fxns
-int * displayFxn(Operation *, int *, int *);
+//Join Functions
 int * singleLineJoin(Operation *, int *, int *);
+
+//StOp Fxns
+
+int * removeDupFxn(Operation *, int *, int *);
+int * sortFxn(Operation *, int *, int *);
+int * displayFxn(Operation *, int *, int *);
 int * countFxn(Operation *, int *, int *);
 int * projectFxn(Operation *, int *, int *);
 int * removeNullFxn(Operation *, int *, int *);
-
 int * addFxn(Operation *, int *, int *);
 // int * maxFxn(int *, Operation *, int *);
 
@@ -73,7 +87,7 @@ int main(int argc, char *argv[])
 # Menu
 ############################*/
 
-const int MENU_COUNT = 7;
+const int MENU_COUNT = 8;
 
 struct menu_item{
     string intro;
@@ -88,6 +102,7 @@ const int M_SUMMARIZE_DATA = 3;
 const int M_QRY_A = 4;
 const int M_QRY_B = 5;
 const int M_QRY_C = 6;
+const int M_QRY_D = 7;
 
 
 void init_menu(){
@@ -98,8 +113,8 @@ void init_menu(){
     menu_items[M_EXIT].param_count = 0;
     //Generate data files
     menu_items[M_GEN_DATA].intro = "Generate Data file";
-    menu_items[M_GEN_DATA].usage = "<file_name> <num_rows> <num_cols> <max_value> <set_as_null (-1 to ignore)>";
-    menu_items[M_GEN_DATA].param_count = 5;
+    menu_items[M_GEN_DATA].usage = "<file_name> <num_rows> <num_cols> <max_value> <max_value_col_A (-1 to ignore)> <set_as_null (-1 to ignore)>";
+    menu_items[M_GEN_DATA].param_count = 6;
     //Read data files
     menu_items[M_READ_DATA].intro = "Print Data file   ";
     menu_items[M_READ_DATA].usage = "<file_name>";
@@ -109,17 +124,31 @@ void init_menu(){
     menu_items[M_SUMMARIZE_DATA].usage = "<file_name>";
     menu_items[M_SUMMARIZE_DATA].param_count = 1;
     //Run Query 1
-    menu_items[M_QRY_A].intro = "QRY: SELECT COUNT (*) as Z FROM T";
+    menu_items[M_QRY_A].intro = "QRY: select count (*) as Z from T";
     menu_items[M_QRY_A].usage = "<file name A>";
     menu_items[M_QRY_A].param_count = 1;
     //Run Query 2
-    menu_items[M_QRY_B].intro = "QRY: SELECT COUNT (colA) as X, COUNT (colB) as Y from tblA";
+    menu_items[M_QRY_B].intro = "QRY: select \n"
+                                "                 count (colA) as X,\n"
+                                "                 count (colB) as Y\n"
+                                "                 from tblA";
     menu_items[M_QRY_B].usage = "<file name A> <col a (as int)> <col b (as int)>";
     menu_items[M_QRY_B].param_count = 3;
     //Run Query 3
-    menu_items[M_QRY_C].intro = "QRY: Select SUM(col) from tblA, tblB WHERE tblA.col# = tblB.col#";
-    menu_items[M_QRY_C].usage = "<file name A> <file name B> <sum col> <join col a> <join col b>";
-    menu_items[M_QRY_C].param_count = 5;
+    menu_items[M_QRY_C].intro = "QRY: select\n"
+                                "                 count (distinct A) as X,\n"
+                                "                 count (distinct B) as Y\n"
+                                "                 from tblA";
+    menu_items[M_QRY_C].usage = "<file name A> <col a (as int)> <col b (as int)>";
+    menu_items[M_QRY_C].param_count = 3;
+    //Run Query 4
+    menu_items[M_QRY_D].intro = "QRY: select A,\n"
+                                "                 count (*) as U, count (distinct *) as V,\n"
+                                "                 count (B) as W, count (distinct B) as X,\n"
+                                "                 count (C) as Y, count (distinct C) as Z\n"
+                                "                 from tblA group by A order by A";
+    menu_items[M_QRY_D].usage = "<file name A> <col A (as int)> <col B (as int)> <col C (as int)>";
+    menu_items[M_QRY_D].param_count = 4;
 }
 
 void print_menu(){
@@ -175,21 +204,19 @@ void menu(){
                 stay = false;
                 break;            
             case M_GEN_DATA:
-                int rows; 
-                int cols;
-                int max;
-                int set_as_null;
+                int rows, cols, max, maxA, set_as_null; 
                 //Verify and pull out int data
                 try{
                     rows = stoi(tokens[2]);
                     cols = stoi(tokens[3]);
                     max = stoi(tokens[4]);
-                    set_as_null = stoi(tokens[5]);
+                    maxA = stoi(tokens[5]);
+                    set_as_null = stoi(tokens[6]);
                 } catch (...){
                     cout << "Usage: " << menu_items[userChoice].usage << "\n";
                     continue;
                 }           
-                genData(tokens[1],rows, cols, max, menu_items[userChoice].usage, set_as_null);
+                genData(tokens[1],rows, cols, max, maxA, menu_items[userChoice].usage, set_as_null);
                 break;
             case M_READ_DATA:
                 readData(tokens[1]);
@@ -201,8 +228,7 @@ void menu(){
                 runQryA(tokens[1]);
                 break;
             case M_QRY_B:
-                int sumColA;
-                int sumColB;
+                int sumColA, sumColB;
                 //Verify and pull out int data
                 try{
                     sumColA = stoi(tokens[2]);
@@ -214,20 +240,18 @@ void menu(){
                 runQryB(tokens[1], sumColA, sumColB);
                 break;
             case M_QRY_C:
-                int sumCol; 
-                int joinColA;
-                int joinColB;
+                int sumColC, sumColD;
                 //Verify and pull out int data
                 try{
-                    sumCol = stoi(tokens[3]);
-                    joinColA = stoi(tokens[4]);
-                    joinColB = stoi(tokens[5]);
+                    sumColC = stoi(tokens[2]);
+                    sumColD = stoi(tokens[3]);
                 } catch (...){
                     cout << "Usage: " << menu_items[userChoice].usage << "\n";
                     continue;
                 } 
-                runQryC(tokens[1], tokens[2], sumCol, joinColA, joinColB);
+                runQryC(tokens[1], sumColC, sumColD);
                 break;
+            // case M_QRY_D:            
             default:
                 cout << "Invalid input\n";
                 break;
@@ -239,7 +263,7 @@ void menu(){
 /*############################
 # Generate new datasets
 ############################*/
-int genData(string fileName, int rows, int cols, int maxSize, string usage, int set_as_null){
+int genData(string fileName, int rows, int cols, int maxSize, int maxSizeColA, string usage, int set_as_null){
     // Send in file name, # of rows, # of columns
     if (rows == 0 || cols == 0){
         cout << "Usage: " << usage;
@@ -261,7 +285,8 @@ int genData(string fileName, int rows, int cols, int maxSize, string usage, int 
     // generate data
     for (int x = 0; x < rows; x++){
         for (int y = 0; y < cols; y++){
-            num = rand()%maxSize;
+            if (y == 0 && maxSizeColA > -1) { num = rand()%maxSizeColA; }
+            else {num = rand()%maxSize;}
             if (num == set_as_null) num = M_NULL;
             file << " " << num;
         }
@@ -340,32 +365,19 @@ int summarizeData(string fileName){
  * SELECT COUNT (*) as Z FROM T
  ***/
 void runQryA(string inFile){
-    oFScan fileA(inFile);
-    oSpool spoolA(&fileA);
-    oStdOp countA(&spoolA, countFxn, 1, nullptr); //updastream op, fxn to run, size of new tupple
+    oFScan fileA(inFile); //Scan File
+    oSpool spoolA(&fileA); //Spool results
+    //count all rows
+    //updastream op, fxn to run, size of new tuple, no args
+    oStdOp countA(&spoolA, countFxn, 1, nullptr); 
 
-    // countA.open();
-    // int * temp = countA.next();
-    // cout << "Z = [" << temp[0] << "]\n";
-    // fflush(stdout);
-
-    // // while (temp) {
-    // //     cout << "Z = [" << temp[0] << "]\n";
-    // //     fflush(stdout);
-    // //     temp = countA.next();
-    // // };
-
-
-    // // fflush(stdout);
-    // countA.close();
-
-    //display results
+    //execute tree, show final output
     oStdOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     displayResult.next();
     displayResult.close();
-
 }
+
 /**
  * Qry 13 in paper
  * SELECT COUNT (colA) as X, COUNT (colB) as Y from tblA
@@ -384,17 +396,17 @@ void runQryA(string inFile){
  *           Count A             Count B
  *             |____________________|
  *                       |
- *                   Join Result
+ *                 Single Row Join
  ***/
 void runQryB(string inFile, int sumColA, int sumColB){
+    
     //Scan in file
     oFScan fileA(inFile); 
     //Project file down to A, B
     int prjAB [3] = {2, sumColA, sumColB};
     oStdOp projectAB(&fileA, projectFxn, 2, prjAB);
     sumColA = 1;
-    sumColB = 2;
-    
+    sumColB = 2;    
     //Spool A, B
     oSpool spool(&projectAB);
     
@@ -403,28 +415,22 @@ void runQryB(string inFile, int sumColA, int sumColB){
      ****/
     //Project down to just A
     int prjA [2] = {1, sumColA};
-    oStdOp projectA(&spool, projectFxn, 1, prjA);
-    
+    oStdOp projectA(&spool, projectFxn, 1, prjA);    
     //Remove null from A
     int rmvA [2] = {1, 1};
     oStdOp removeNullA(&projectA, removeNullFxn, 1, rmvA);    
-
     //Count total number of args in A
     oStdOp countA(&removeNullA, countFxn, 1, nullptr); 
-
 
     /*****
      * Branch b
      ****/
-    //spool.rewind();    
     //Project down to just A
     int prjB [2] = {1, sumColB};
     oStdOp projectB(&spool, projectFxn, 1, prjB);
-
     //Remove null from A
     int rmvB [3] = {1, 1};
     oStdOp removeNullB(&projectB, removeNullFxn, 1, rmvB);    
-
     //Count total number of args in B
     oStdOp countB(&removeNullB, countFxn, 1, nullptr); 
 
@@ -438,53 +444,105 @@ void runQryB(string inFile, int sumColA, int sumColB){
     joinOps[1] = &countB;
     int jArgs [2] = {1, 2}; //send in exepcted # of operations
     oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
-    
-    //display results
+    //Execute tree and display results
     oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
     displayResult.open();
     displayResult.next();
     displayResult.close();
 }
+
+
 /**
- * If spooling can be used by multiple objects, then it needs to keep
- * some information in memory.  A simple apporach would be to have 
- * spool track a pointer based on the operation that is calling it
+ * Qry 15 in paper
+ * SELECT COUNT (DISTINCT colA) as X, COUNT (DISTINCT colB) as Y from tblA
  * 
- *                      Scan --> Bring into memory or spool
- *                       |                   
+ *                     Scan --> Bring into memory or spool
+ *                       |    
+ *                    Project (colA, colB)               
+ *                       |
  *                     Spool
+ *              _________|__________
+ *             |                    |
+ *          Project A             Project B
+ *             |                    |
+ *        Filter Null A        Filter Null B
+ *             |                    |
+ *           Sort A              Sort B
+ *             |                    |
+ *    In Stream distinct A   In Stream distinct B
+ *             |                    |
+ *     Scalar Counting A       Saclar Counting B
+ *             |____________________|
  *                       |
- *                     _____
- *                    |     |
- *                  Op A   Op B
- *                    |_____|
- *                       |
- *                   Join Result
- * 
- * Scan: Open file, bring it into memory?
- * oScan fileA(inFileA)
- * oSpool spoolA(fileA);
- * oRunPred mPredA(&fileA, colA);
- * oRunPred mPredB(&fileA, colB);
- * 
- * col A          col B
- *   1   <--mPA     3
- *   2              5  <--mPB
- *   4              7
+ *                   Single Row Join
  ***/
-void runQryC(string inFileA, string inFileB, int sumFld, int joinColA, int joinColB){
-    // // 1) Spool tables a and b
-    // oFScan fileA(inFileA);
-    // oFScan fileB(inFileB);
+void runQryC(string inFile, int sumColA, int sumColB){
+    //Scan in file
+    oFScan fileA(inFile); 
+    //Project file down to A, B
+    int prjAB [3] = {2, sumColA, sumColB};
+    oStdOp projectAB(&fileA, projectFxn, 2, prjAB);
+    sumColA = 1;
+    sumColB = 2;    
+    //Spool A, B
+    oSpool spool(&projectAB);
+    
+    /*****
+     * Branch A
+     ****/
+    //Project down to just A
+    int prjA [2] = {1, sumColA};
+    oStdOp projectA(&spool, projectFxn, 1, prjA);    
+    //Remove null from A
+    int rmvA [2] = {1, 1}; 
+    oStdOp removeNullA(&projectA, removeNullFxn, 1, rmvA);    
+    //Sort
+    int srtA [3] = {2, 0, 0}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp sortA(&removeNullA, sortFxn, -1, srtA);
+    //In stream duplicate removal
+    oStdOp dupRemoveA(&sortA, removeDupFxn, -1, nullptr );
+    //dupRemoveA.setPrint(true);    
+    //Scala Count total number of args in A
+    oStdOp countA(&dupRemoveA, countFxn, 1, nullptr); 
+    //countA.setPrint(true);  
+    
+    
 
-    // // 2) Hash join
-    // oHashJoin mJoin(&fileA, &fileB);
+    /*****
+     * Branch b
+     ****/    
+    //Project down to just A
+    int prjB [2] = {1, sumColB};
+    oStdOp projectB(&spool, projectFxn, 1, prjB);
+    //Remove null from A
+    int rmvB [3] = {1, 1};
+    oStdOp removeNullB(&projectB, removeNullFxn, 1, rmvB);  
+    //Sort
+    int srtB [3] = {2, 0, 0}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp sortB(&removeNullB, sortFxn, -1, srtB);
+    //In stream duplicate removal
+    oStdOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
+    //dupRemoveB.setPrint(true);      
+    //Count total number of args in B
+    oStdOp countB(&dupRemoveB, countFxn, 1, nullptr); 
+    //countB.setPrint(true);      
 
-    // // 3) Addition
-    // oStdOp mAggData(&mJoin, maxFxn);
-    // mAggData.open();
-    // while (mAggData.next());
-    // mAggData.close();
+    /*****
+     * Join A and B
+     * May need to think about how this would work with a group by
+     * Would this join be different than a join between two tables?
+     ****/    
+    Operation * joinOps[2];
+    joinOps[0] = &countA;
+    joinOps[1] = &countB;
+    int jArgs [2] = {1, 2}; //send in exepcted # of operations
+    oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
+    //Execute tree and display results
+    oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    displayResult.open();
+    displayResult.next();
+    displayResult.close();
 }
 
 /*############################
@@ -504,6 +562,39 @@ vector<string> split(const string& s, char delimiter)
    return tokens;
 }
 
+
+/*############################
+# Multi Op Functions
+############################*/
+/**
+ * single line cartesian join
+ * Assumes each input only sends in one item
+ ***/
+int * singleLineJoin(Operation * me, int * mOut, int * mArgs){
+    Operation ** op = me->getUpsOps();
+
+    //Itterate through ops
+    int count = 0;
+    for (int i = 0; i < mArgs[1]; i++){
+        // cout << "working through operator " << i << "\n";
+        // fflush(stdout);
+        int * mInput  = op[i]->next();        
+        if (mInput){
+            //Itterate through tuples in op and add to output
+            for (int c = 0; c < op[i]->tSize(); c++){
+
+                mOut[count] = mInput[c];
+                count++;
+            }
+        } else {
+            return nullptr;
+        }       
+    }    
+
+    if (me->getPrint()) cout << "   join";
+    fflush(stdout);
+    return mOut;
+}
 
 /*############################
 # StdOp Functions
@@ -539,34 +630,104 @@ int * displayFxn(Operation * me, int * mOut, int * mIgnore){
     return mInput;
 }
 
+/**
+ * Remove Duplicates
+ ***/
+int * dupPrev = nullptr;
+
+int * removeDupFxn(Operation * me, int * mOut, int * mIgnore){
+    Operation * op = me->getUpsOp(); 
+    int * mInput = op->next();
+    if (mInput){
+        if (dupPrev == nullptr){
+            //cout << "about to generate new dupPrev\n";
+            //fflush(stdout);
+            dupPrev = new int [op->tSize()];
+            //cout << "about to build dupPrev\n";
+            //fflush(stdout);
+            for (int i = 0; i < op->tSize(); i++){
+                dupPrev[i] = mInput[i];
+                mOut[i] = mInput[i];
+            }
+            //cout << "about to return input dupPrev\n";
+            //fflush(stdout);
+            return mOut;
+        } 
+
+        while (true && mInput){
+            bool tMatch = true;
+            for (int i = 0; i < op->tSize(); i++){
+                //cout << "comparing dupPrev[i] (" << dupPrev[i] << ") to mInput[i] (" << mInput[i] << ")\n";
+                //fflush(stdout);
+                tMatch &= (dupPrev[i] == mInput[i]);
+                mOut[i] = mInput[i];
+            }
+            //cout << "tMatch = " << tMatch << "\n";
+            if (!tMatch) { // Unique
+                for (int i = 0; i < op->tSize(); i++){
+                    dupPrev[i] = mInput[i];
+                }
+                return mOut;
+            }
+            mInput = op->next();
+        }
+    }
+
+    //cout << "removeDup about to return null ptr\n";
+    return nullptr;
+    
+         
+}
 
 /**
- * single line cartesian join
- * Assumes each input only sends in one item
+ * Basic sort function
+ * Issue:  Need special open function
  ***/
-int * singleLineJoin(Operation * me, int * mOut, int * mArgs){
-    Operation ** op = me->getUpsOps();
+list <int *> sortList;
 
-    //Itterate through ops
-    int count = 0;
-    for (int i = 0; i < mArgs[1]; i++){
-        int * mInput  = op[i]->next();        
-        if (mInput){
-            //Itterate through tuples in op and add to output
+int * sortFxn(Operation * me, int * mOut, int * mArgs){ 
+    Operation * op = me->getUpsOp();    
 
-            for (int c = 0; c < op[i]->tSize(); c++){
-
-                mOut[count] = mInput[c];
-                count++;
+    //I list is not built yet, must build first
+    //Sort must consume all tuples prior to releasing output
+    if (mArgs[1] == 0)    {
+        cout << "Building List\n";
+        fflush(stdout);
+        
+        while (true){
+            int * mInput = new int [op->tSize()];            
+            int * temp = op->next();            
+            if (temp){
+                for (int i = 0; i < op->tSize(); i++){
+                    mInput[i] = temp[i];
+                }
+                //cout << "pushing " << mInput[0] << "\n";
+                sortList.push_back(mInput);
+            } else {
+                break;
             }
-        } else {
-            return nullptr;
-        }       
-    }    
+            //cout << "Peek at first, last " << sortList.front()[0] << " " << sortList.back()[0] << "\n";
+        }
 
-    if (me->getPrint()) cout << "   join";
-    fflush(stdout);
-    return mOut;
+        //Sort
+        int sortCol = mArgs[2];
+        sortList.sort([sortCol](int * first, int * second){
+            return (first[sortCol] < second[sortCol]);
+        });
+
+        mArgs[1] = 1;        
+    }    
+    
+
+    //items should be sorted now
+    if (!sortList.empty()){
+        if (me->getPrint()) cout << "   sort";
+        int * mOut = sortList.front();
+        sortList.pop_front();
+        return mOut;
+    }
+    //might need to destroy list now
+    return nullptr;
 }
 
 
@@ -598,7 +759,7 @@ int * addFxn(Operation * me, int * mOut, int * mIgnore){
             mOut[0] += mInput[0];                            
             mInput = op->next();
         }   
-        if (op->getPrint()) cout << "   countFxn";
+        if (op->getPrint()) cout << "   addFxn";
         return mOut;
     }     
     return mInput;
