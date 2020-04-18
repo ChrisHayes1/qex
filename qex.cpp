@@ -18,6 +18,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <list>
+#include <unordered_map>
 
 #include "oFScan.h"
 #include "oSpool.h"
@@ -53,7 +54,9 @@ void menu();
 //Queries
 void runQryA(string);
 void runQryB(string, int, int);
-void runQryC(string, int, int);
+void runQryCWide(string, int, int);
+void runQryD6Wide(string, int, int, int);
+
 // void runQryD(string, string, int, int, int);
 
 //Join Functions
@@ -61,6 +64,8 @@ int * singleLineJoin(Operation *, int *, int *);
 
 //StOp Fxns
 
+int * hashDistFxn(Operation *, int *, int *);
+int * hashAggFxn(Operation *, int *, int *);
 int * removeDupFxn(Operation *, int *, int *);
 int * sortFxn(Operation *, int *, int *);
 int * displayFxn(Operation *, int *, int *);
@@ -87,7 +92,7 @@ int main(int argc, char *argv[])
 # Menu
 ############################*/
 
-const int MENU_COUNT = 8;
+const int MENU_COUNT = 10;
 
 struct menu_item{
     string intro;
@@ -101,8 +106,10 @@ const int M_READ_DATA = 2;
 const int M_SUMMARIZE_DATA = 3;
 const int M_QRY_A = 4;
 const int M_QRY_B = 5;
-const int M_QRY_C = 6;
-const int M_QRY_D = 7;
+const int M_QRY_Ca = 6;
+const int M_QRY_Cb = 7;
+const int M_QRY_Da = 8;
+const int M_QRY_Dc = 9;
 
 
 void init_menu(){
@@ -124,31 +131,42 @@ void init_menu(){
     menu_items[M_SUMMARIZE_DATA].usage = "<file_name>";
     menu_items[M_SUMMARIZE_DATA].param_count = 1;
     //Run Query 1
-    menu_items[M_QRY_A].intro = "QRY: select count (*) as Z from T";
+    menu_items[M_QRY_A].intro = "QRY A: \n"
+                                "                 select count (*) as Z from T";
     menu_items[M_QRY_A].usage = "<file name A>";
     menu_items[M_QRY_A].param_count = 1;
     //Run Query 2
-    menu_items[M_QRY_B].intro = "QRY: select \n"
+    menu_items[M_QRY_B].intro = "QRY B: \n"
+                                "                 select \n"
                                 "                 count (colA) as X,\n"
                                 "                 count (colB) as Y\n"
                                 "                 from tblA";
     menu_items[M_QRY_B].usage = "<file name A> <col a (as int)> <col b (as int)>";
     menu_items[M_QRY_B].param_count = 3;
-    //Run Query 3
-    menu_items[M_QRY_C].intro = "QRY: select\n"
+    //Run Query 3a
+    menu_items[M_QRY_Ca].intro = "QRY C (bushy): \n"
+                                "                 select\n"
                                 "                 count (distinct A) as X,\n"
                                 "                 count (distinct B) as Y\n"
                                 "                 from tblA";
-    menu_items[M_QRY_C].usage = "<file name A> <col a (as int)> <col b (as int)>";
-    menu_items[M_QRY_C].param_count = 3;
+    menu_items[M_QRY_Ca].usage = "<file name A> <col a (as int)> <col b (as int)>";
+    menu_items[M_QRY_Ca].param_count = 3;
+    //Run Query 3b
+    menu_items[M_QRY_Cb].intro = "QRY C (narrow)";
+    menu_items[M_QRY_Cb].usage = "<file name A> <col a (as int)> <col b (as int)>";
+    menu_items[M_QRY_Cb].param_count = 3;
     //Run Query 4
-    menu_items[M_QRY_D].intro = "QRY: select A,\n"
+    menu_items[M_QRY_Da].intro = "QRY D (bushy 6 branch) \n"
+                                "                 select A,\n"
                                 "                 count (*) as U, count (distinct *) as V,\n"
                                 "                 count (B) as W, count (distinct B) as X,\n"
                                 "                 count (C) as Y, count (distinct C) as Z\n"
                                 "                 from tblA group by A order by A";
-    menu_items[M_QRY_D].usage = "<file name A> <col A (as int)> <col B (as int)> <col C (as int)>";
-    menu_items[M_QRY_D].param_count = 4;
+    menu_items[M_QRY_Da].usage = "<file name A> <col A (as int)> <col B (as int)> <col C (as int)>";
+    menu_items[M_QRY_Da].param_count = 4;
+    menu_items[M_QRY_Dc].intro = "QRY D (narrow)";
+    menu_items[M_QRY_Dc].usage = "<file name A> <col A (as int)> <col B (as int)> <col C (as int)>";
+    menu_items[M_QRY_Dc].param_count = 4;
 }
 
 void print_menu(){
@@ -239,7 +257,7 @@ void menu(){
                 } 
                 runQryB(tokens[1], sumColA, sumColB);
                 break;
-            case M_QRY_C:
+            case M_QRY_Ca:
                 int sumColC, sumColD;
                 //Verify and pull out int data
                 try{
@@ -249,9 +267,21 @@ void menu(){
                     cout << "Usage: " << menu_items[userChoice].usage << "\n";
                     continue;
                 } 
-                runQryC(tokens[1], sumColC, sumColD);
-                break;
-            // case M_QRY_D:            
+                runQryCWide(tokens[1], sumColC, sumColD);
+                break;   
+            case M_QRY_Da:
+                int daColA, daColB, daColC;
+                //Verify and pull out int data
+                try{
+                    daColA = stoi(tokens[2]);
+                    daColB = stoi(tokens[3]);
+                    daColC = stoi(tokens[3]);
+                } catch (...){
+                    cout << "Usage: " << menu_items[userChoice].usage << "\n";
+                    continue;
+                } 
+                runQryD6Wide(tokens[1], daColA, daColB, daColC);
+                break;         
             default:
                 cout << "Invalid input\n";
                 break;
@@ -476,7 +506,7 @@ void runQryB(string inFile, int sumColA, int sumColB){
  *                       |
  *                   Single Row Join
  ***/
-void runQryC(string inFile, int sumColA, int sumColB){
+void runQryCWide(string inFile, int sumColA, int sumColB){
     //Scan in file
     oFScan fileA(inFile); 
     //Project file down to A, B
@@ -518,7 +548,7 @@ void runQryC(string inFile, int sumColA, int sumColB){
     int rmvB [3] = {1, 1};
     oStdOp removeNullB(&projectB, removeNullFxn, 1, rmvB);  
     //Sort
-    int srtB [3] = {2, 0, 0}; //1 arg, bool is sorted? if 0 then sort first
+    int srtB [3] = {2, 0, 0}; //2 arg, bool is sorted? if 0 then sort first, sort col
     oStdOp sortB(&removeNullB, sortFxn, -1, srtB);
     //In stream duplicate removal
     oStdOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
@@ -542,6 +572,96 @@ void runQryC(string inFile, int sumColA, int sumColB){
     //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     displayResult.next();
+    displayResult.close();
+}
+
+
+/**
+ * Qry 20 (wide, fig 3) in paper - 6 way branch
+ * select a, count (*) as U, count (distinct *) as V,
+ *           count (B) as W, count (distinct B) as X,
+ *           count (C) as Y, count (distinct C) as Z
+ *           from tblA group by A order by A
+ * 
+ *                                     Scan
+ *                                       |
+ *                                     Spool
+ *      _________________________________|___________________________________
+ *     |             |             |             |             |             |
+ *     |             |         Project B      Project B    Project C      Project C
+ *     |             |             |             |             |             |
+ *     |             |     Filter Null B   Filter Null B   Filter Null C   Filter Null C
+ *     |             |             |             |             |             |
+ *     |       Hash Distinct       |      Hash distinct        |         Hash distinct
+ *     |             |             |             |             |             |
+ *  Hash Agg       Hash Agg    Hash Agg      Hash Agg      Hash Agg      Hash Agg
+ *     |_____________|_____________|_____________|_____________|_____________|
+ *                                       |
+ *                                Multi Row Join on A                               
+ ***/
+void runQryD6Wide(string inFile, int ColA, int ColB, int colC){
+    //Scan in file
+    oFScan fileA(inFile);     
+    //Spool (needs all columns due to count distinc *)
+    oSpool spool(&fileA);
+
+    /*****
+     * Count *
+     ****/
+    // All we need is to run hash aggregation on colA
+    int hashAllAgg [3] = {3, 0, ColA}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp hashAggAll(&spool, hashAggFxn, 2, hashAllAgg);
+    
+    // hashAggAll.open();
+    // hashAggAll.next();
+    // hashAggAll.close();
+    /*****
+     * Count distinct*
+     ****/
+    //Hash Distincts
+    int hashAllDistVar [3] = {3, 0, ColA}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp hashAllDist(&spool, hashDistFxn, -1, nullptr);
+    //Hash Aggregate
+    int hashAllAggDist [3] = {3, 0, ColA}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp hashAggAllDist(&hashAllDist, hashAggFxn, 2, hashAllAggDist);
+
+    /*****
+     * Count B
+     ****/
+    //project down to a, b
+    int prjAB [3] = {2, ColA, ColB};
+    ColA = 1;
+    ColB = 2;
+    oStdOp projectAB(&spool, projectFxn, 2, prjAB);
+    projectAB.setPrint(true);
+    //Remove null from B
+    int rmvB [3] = {1, ColB};
+    oStdOp removeNullB(&projectAB, removeNullFxn, 1, rmvB);  
+    //Hash agg A, B
+    int hashBAll [3] = {3, 0, ColA}; //1 arg, bool is sorted? if 0 then sort first
+    oStdOp hashAggB(&removeNullB, hashAggFxn, 2, hashBAll);
+
+    /*****
+     * Count Distinct B
+     ****/
+
+    /*****
+     * Count C
+     ****/
+
+    /*****
+     * Count Distinct C
+     ****/
+
+    /*****
+     * Join
+     ****/
+
+    //Execute tree and display results
+    oStdOp displayResult(&hashAggB, displayFxn, -1, nullptr);
+    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    displayResult.open();
+    while(displayResult.next());
     displayResult.close();
 }
 
@@ -679,9 +799,79 @@ int * removeDupFxn(Operation * me, int * mOut, int * mIgnore){
          
 }
 
+
+unordered_map<string, int> distinctMap;
+/**
+ * Identify distinct with has function.  This is potentially problematic for multi-key rows
+ ****/
+
+int * hashDistFxn(Operation * me, int * mOut, int * mArgs){ 
+    Operation * op = me->getUpsOp();
+    string mKey;
+    int * mInput;
+    do{
+        mInput = op->next();
+        if (mInput){
+            mKey = "";
+            for (int i = 0; i < op->tSize(); i++){
+                mKey += mInput[i] + " ";        
+            }
+        } else {
+            return nullptr;
+        }        
+    } while (distinctMap.count(mKey) != 0);
+
+    distinctMap[mKey];
+    if (me->getPrint()) cout << "   hDist";
+    return mInput;
+}
+
+/**
+ * Hash Aggregate implementation
+ * Not comming in sorted. So similar to sortFxn, I need
+ * to build hash table on first round, and then can 
+ * return entry by entry until we run out
+ ***/
+unordered_map<int,int> aggMap;
+unordered_map<int, int>:: iterator i;
+
+int * hashAggFxn(Operation * me, int * mOut, int * mArgs){ 
+    Operation * op = me->getUpsOp();    
+    //I hash is not built yet, must build first
+    if (mArgs[1] == 0) {
+        //Build hash table
+        while (true){
+            int * mInput = op->next();
+            if (mInput){
+                int mapKey = mArgs[2] - 1;
+                aggMap[mInput[mapKey]]++;
+            } else {
+                break;
+            }
+            
+        }
+        i = aggMap.begin();
+        mArgs[1] = 1; 
+    } else {
+        i++;
+    }
+
+    //Return next pair
+    if (i != aggMap.end()){
+        if (me->getPrint()) cout << "   hAgg";
+        mOut[0] = i->first;
+        mOut[1] = i->second;
+        return mOut;
+    }
+        
+    aggMap.clear();
+    return nullptr;    
+}
+
 /**
  * Basic sort function
- * Issue:  Need special open function
+ * TODO: Seems like I should be able to do this without re-allocating memory
+ * I am alreayd building a structure in the spool, so that is what we should be sorting...
  ***/
 list <int *> sortList;
 
@@ -691,8 +881,8 @@ int * sortFxn(Operation * me, int * mOut, int * mArgs){
     //I list is not built yet, must build first
     //Sort must consume all tuples prior to releasing output
     if (mArgs[1] == 0)    {
-        cout << "Building List\n";
-        fflush(stdout);
+        // cout << "Building List\n";
+        // fflush(stdout);
         
         while (true){
             int * mInput = new int [op->tSize()];            
@@ -726,7 +916,10 @@ int * sortFxn(Operation * me, int * mOut, int * mArgs){
         sortList.pop_front();
         return mOut;
     }
-    //might need to destroy list now
+
+    //pop_front should remove elements
+    //delete sortList;
+    sortList.clear();
     return nullptr;
 }
 
@@ -742,7 +935,7 @@ int * countFxn(Operation * me, int * mOut, int * mIgnore){
             mOut[0] ++;                            
             mInput = op->next();
         }   
-        if (op->getPrint()) cout << "   countFxn";
+        if (me->getPrint()) cout << "   countFxn";
         return mOut;
     }     
     return mInput;
@@ -759,7 +952,7 @@ int * addFxn(Operation * me, int * mOut, int * mIgnore){
             mOut[0] += mInput[0];                            
             mInput = op->next();
         }   
-        if (op->getPrint()) cout << "   addFxn";
+        if (me->getPrint()) cout << "   addFxn";
         return mOut;
     }     
     return mInput;
@@ -776,7 +969,7 @@ int * projectFxn(Operation * me, int * mOut, int * mArgs){
             //cout << " mInput[" << mArgs[i+ARG_START] -1 << "] = " << mInput[mArgs[i] + ARG_START];
             mOut[i] = mInput[mArgs[i+ARG_START] -1];
         }
-        if (op->getPrint()) cout << "   prj";
+        if (me->getPrint()) cout << "   prj";
         return mOut;
     }
     return mInput;
@@ -793,7 +986,7 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
         if (mInput && mInput[mArgs[ARG_START]-1] != M_NULL) break;
         mInput = op->next();
     } 
-    if (op->getPrint()) cout << "   rmvNull";
+    if (me->getPrint()) cout << "   rmvNull";
     return mInput;    
 }
 
