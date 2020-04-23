@@ -26,12 +26,13 @@ oJoin::oJoin(Operation ** mOps, int * (*mNextFxn)(Operation *, int *, int *), in
 int oJoin::open(){
     int getSize = colCount;
     if (getSize == -1){
-        colCount = 0;
-        // Find true out tuple size
-        for (int i = 0; i < args[1]; i++){
-            ops[i]->open();
-            colCount += ops[i]->tSize();
-        }
+        colCount = 0;        
+    }
+
+    // Find true out tuple size
+    for (int i = 0; i < args[0]; i++){
+        ops[i]->open();
+        if (getSize == -1) colCount += ops[i]->tSize();
     }
 
     outTuple = new int[colCount];
@@ -44,7 +45,7 @@ int * oJoin::next(){
 }
 
 void oJoin::close(){    
-    for (int i = 0; i < args[1]; i++){
+    for (int i = 0; i < args[0]; i++){
         ops[i]->close();
     }
 }

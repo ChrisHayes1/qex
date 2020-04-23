@@ -50,6 +50,7 @@ int * oSpool::next(){
                 mTuple[c] = temp[c];
             }
             if (mTuple && showPrintout) print(mTuple, colSize, "-->");
+
             if (mTuple) enQ(mTuple);
             //print(mTuple, colSize, "   tContents");
             
@@ -110,6 +111,7 @@ void oSpool::print(int * mPtr, int size, const char * mStr){
         fflush(stdout);
     }
     printf("\n");
+    fflush(stdout);
 }
 
 void oSpool::rewind(){

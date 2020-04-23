@@ -22,6 +22,8 @@ oStdOp::oStdOp(Operation * mOpp, int * (*mNextFxn)(Operation *, int *, int *), i
  *************/
 
 int oStdOp::open(){
+    //printf("Opening\n");
+    fflush(stdout);
     op->open();    
     if (colCount == -1) colCount = op->tSize();  
     outTuple = new int[colCount];
@@ -49,7 +51,8 @@ int oStdOp::tSize(){
 void oStdOp::print(int * mPtr, int size, const char * mStr){
     printf("%s: ", mStr);
     for (int i = 0; i < size; i++){
-        printf("[%*d]", 3, mPtr[i]);            
+        if (mPtr[i] != -1) printf("[%*d]", 3, mPtr[i]);     
+        else printf("[%*s]", 3, "N");
         fflush(stdout);
     }
     printf("\n");
