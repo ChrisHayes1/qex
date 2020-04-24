@@ -1,11 +1,15 @@
 #include "iOperation.h"
 #include <fstream>
 #include <iostream>
+#include <chrono> 
 
 using namespace std;
 
+
 #ifndef O_JOIN_H
 #define O_JOIN_H
+
+using namespace std::chrono; 
 
 class oJoin: public Operation {
     public:
@@ -34,6 +38,9 @@ class oJoin: public Operation {
         //Fxn sent in - Upstream op, output tuple, Optional args (# args, args)
         //Args sent in --> if not null, 1st item = # args, followed by args
         int * (*nextFxn)(Operation *, int *, int *);
+        time_point<high_resolution_clock> oStart;
+        time_point<high_resolution_clock> oEnd;
+        duration<double, micro> oDuration;
 };
 
 #endif

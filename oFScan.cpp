@@ -6,6 +6,10 @@
 // #include <iostream>
 #include "oFScan.h"
 #include <sys/stat.h>
+#include <iostream>
+#include <chrono> 
+
+using namespace std;
 
 /**************
  * Constructor
@@ -19,6 +23,7 @@ oFScan::oFScan(string fileName){
  * Interface
  *************/
 int oFScan::open(){
+    oStart = high_resolution_clock::now();
     file.open(mFileName);
     if (!file){
         cerr << "Unable to generate file";
@@ -27,6 +32,10 @@ int oFScan::open(){
     file >> colSize;
     file >> colSize;
     tuple = new int [colSize];
+    
+    oEnd = high_resolution_clock::now();
+    oDuration  = duration_cast<microseconds>(oEnd - oStart);
+
     return getFileSize();
 }
 
@@ -37,16 +46,22 @@ int oFScan::getFileSize(){
 }
 
 int * oFScan::next(){
+    oStart = high_resolution_clock::now();
     if (file.good()){
         for (int c = 0; c < colSize; c++){
             file >> tuple[c];
         }
+        oEnd = high_resolution_clock::now();
+        oDuration  += duration_cast<microseconds>(oEnd - oStart);
         return tuple;
     }
+    oEnd = high_resolution_clock::now();
+    oDuration  += duration_cast<microseconds>(oEnd - oStart);
     return nullptr;    
 }
 
-void oFScan::close(){    
+void oFScan::close(){ 
+    cout << "Total duration (fscan) = " << oDuration.count()/1000 << "\n";   
     delete tuple;
 }
 

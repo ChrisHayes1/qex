@@ -1,8 +1,10 @@
 #include "iOperation.h"
 #include <fstream>
 #include <iostream>
+#include <chrono> 
 
 using namespace std;
+using namespace std::chrono; 
 
 #ifndef O_SPOOL_H
 #define O_SPOOL_H
@@ -35,6 +37,11 @@ class oSpool: public Operation {
         Operation * op;        
         int colSize;
         int * tuple;
+
+        time_point<high_resolution_clock> oStart;
+        time_point<high_resolution_clock> oEnd;
+        duration<double, micro> oDuration;
+
         node * head;
         node * end;
         node * current;
@@ -46,6 +53,7 @@ class oSpool: public Operation {
         void enQ(int *);
         void close_list();
         void printsList();
+        
 };
 
 

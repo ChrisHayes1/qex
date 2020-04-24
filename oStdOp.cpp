@@ -4,6 +4,11 @@
 
 #include <fstream>
 #include "oStdOp.h"
+#include <iostream>
+#include <chrono> 
+
+using namespace std;
+using namespace std::chrono; 
 
 /**************
  * Constructor
@@ -27,16 +32,23 @@ int oStdOp::open(){
     op->open();    
     if (colCount == -1) colCount = op->tSize();  
     outTuple = new int[colCount];
+    oStart = high_resolution_clock::now();
+    oEnd = high_resolution_clock::now();
+    oDuration  = duration_cast<microseconds>(oEnd - oStart);
 }
 
 int * oStdOp::next(){
+    oStart = high_resolution_clock::now();
     outTuple = nextFxn(this, outTuple, args);
     if (outTuple && showPrintout) print(outTuple, colCount, "-->");
+    oEnd = high_resolution_clock::now();
+    oDuration  += duration_cast<microseconds>(oEnd - oStart);
     return outTuple;
 }
 
 void oStdOp::close(){    
     op->close();
+    cout << "Total duration = " << oDuration.count()/1000 << "\n";
     delete [] outTuple; 
 }
 

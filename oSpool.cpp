@@ -9,6 +9,11 @@
 // #include <iostream>
 #include "oSpool.h"
 #include <sys/stat.h>
+#include <iostream>
+#include <chrono> 
+
+using namespace std;
+using namespace std::chrono;
 
 /**************
  * Constructor
@@ -29,6 +34,10 @@ int oSpool::open(){
         colSize = op->tSize();
         init_list();
         isOpened = true;
+
+        oStart = high_resolution_clock::now();
+        oEnd = high_resolution_clock::now();
+        oDuration  = duration_cast<microseconds>(oEnd - oStart);
     }
 }
 
@@ -39,6 +48,7 @@ int * oSpool::next(){
     //sent, but the tuple it is getting sent keeps changing.  So all the downstream
     //pointers are pointing to the same stack memory in the previous app.  I need
     //to transfer the filestream data to its own location in the heap
+    oStart = high_resolution_clock::now();
     if (!rewound){
          int * temp;
         temp = op->next();
@@ -54,18 +64,26 @@ int * oSpool::next(){
             if (mTuple) enQ(mTuple);
             //print(mTuple, colSize, "   tContents");
             
+            oEnd = high_resolution_clock::now();
+            oDuration  += duration_cast<microseconds>(oEnd - oStart);
             return mTuple;
         }
         rewind();
+        oEnd = high_resolution_clock::now();
+        oDuration  += duration_cast<microseconds>(oEnd - oStart);
         return nullptr;
     } else {
         //Rewound
         if (current){
             int * temp = current->tuple;
             current = current->next;
+            oEnd = high_resolution_clock::now();
+            oDuration  += duration_cast<microseconds>(oEnd - oStart);
             return temp;
         }     
         rewind();
+        oEnd = high_resolution_clock::now();
+        oDuration  += duration_cast<microseconds>(oEnd - oStart);
         return nullptr;        
     }
     
@@ -76,6 +94,7 @@ void oSpool::close(){
         close_list(); //Do we need to move?
         op->close();
         op = nullptr;
+        cout << "Total duration (Spool) = " << oDuration.count()/1000 << "\n";
     }    
 }
 

@@ -13,6 +13,7 @@
 #include <string>
 //#include <cstring>
 #include <chrono> 
+#include <time.h>
 #include <iostream>
 #include <vector> 
 #include <sstream>
@@ -212,7 +213,7 @@ void menu(){
     int userChoice = -999;
 
     //run menu options and repeate
-    while (stay){
+    while (stay){        
         if (userChoice != -999) {
             sleep(1);
         }
@@ -238,6 +239,12 @@ void menu(){
             cout << "Usage: " << menu_items[userChoice].usage << "\n";
             continue;
         }
+        // time_t start, end;
+        // time(&start);
+        //Start tracking function time
+        auto start = high_resolution_clock::now();
+        
+
         //Branch user input
         cout << "\n";
         switch (userChoice)
@@ -363,6 +370,21 @@ void menu(){
                 cout << "Invalid input\n";
                 break;
         }
+
+        //Stop tracking time and report
+        auto stop = high_resolution_clock::now(); 
+        auto duration = duration_cast<microseconds>(stop - start);
+        cout << "\nRun Time = " << duration.count() << " microseconds\n";
+        cout << "\nRun Time = " << duration.count()/1000 << " miliseconds\n";
+        
+        // Recording end time. 
+        // time(&end); 
+    
+        // // Calculating total time taken by the program. 
+        // double time_taken = double(end - start); 
+        // cout << "Time taken by program is : " << fixed 
+        //     << time_taken;
+        // cout << " sec " << endl; 
     }
 }
 
@@ -694,6 +716,7 @@ void runQryCNarrow(string inFile, int sumColA, int sumColB, int sumColC){
 
     //Hash agg A, B
     oStdOp hashAgg(&hashDist, hashAggFxnBasic, -1, &sumColA);
+    // oStdOp hashAgg(&removeNull, hashAggFxnBasic, -1, &sumColA);
     hashAgg.setPrint(true);
 
     //unpivot
@@ -732,6 +755,7 @@ void runQryCNarrow(string inFile, int sumColA, int sumColB, int sumColC){
  *                   Multi Row Join on A                               
  ***/
 void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
+    time_point<high_resolution_clock> start = high_resolution_clock::now();
     //Scan in file
     oFScan fileA(inFile);     
     //Spool (needs all columns due to count distinc *)
@@ -774,7 +798,9 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
     //Remove null from C
     oStdOp removeNullC(&projectAC, removeNullFxn, 1, &ColCMod);  
     //Hash agg A, B
+    //int paramAggC[3] = {1, 0, ColAMod};
     oStdOp hashAggC(&removeNullC, hashAggFxnBasic, 2, &ColAMod);
+
 
     /*****
      * Count Distinct C
@@ -818,6 +844,10 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
     displayResult.open();
     while(displayResult.next());
     displayResult.close();
+
+    time_point<high_resolution_clock> stop = high_resolution_clock::now(); 
+    duration<double, micro> duration = duration_cast<microseconds>(stop - start);
+    cout << "\n Fxn Run Time = " << duration.count()/1000 << " milliseconds\n";
 }
 
 
@@ -1175,6 +1205,7 @@ int * multiLineJoin(Operation * me, int * mOut, int * mArgs){
         //done building hash table
         joinI = joinMap.begin();
         mArgs[1] = 1;
+
     } else {
         joinI++;
     }
@@ -1409,22 +1440,19 @@ int * hashDistFxn(Operation * me, int * mOut, int * mIgnore){
     Operation * op = me->getUpsOp();
     string mKey = "";
     int * mInput;
-    do{
-        mInput = op->next();
+
+    do{        
+        mInput = op->next();                
         if (mInput){
-            mKey = "";
+            mKey = "";            
             for (int i = 0; i < op->tSize(); i++){
                 mKey = mKey + to_string(mInput[i]) + " ";        
-            }            
+            }                        
         } else {
             distinctMap.clear();
             return nullptr;
         }    
-        // cout << "   mKey " << mKey << "\n";
-        // cout << "    dup? = " << (distinctMap.count(mKey) != 0) << "\n";
-        // fflush(stdout);   
     } while (distinctMap.count(mKey) != 0);
-
     distinctMap[mKey];
     if (me->getPrint()) cout << "   hDist";
     return mInput;
@@ -1449,7 +1477,7 @@ int * hashAggFxn(Operation * me, int * mOut, int * mArgs){
     string mKey = "";
     int * mHashNode; // Store new tuple in hash table
     //I hash is not built yet, must build first
-    if (hashBuilt == 0) {
+    if (hashBuilt == 0) {        
         //Build hash table
         while (true){
             int * mInput = op->next();
@@ -1591,6 +1619,7 @@ int * hashAggFxnBasic(Operation * me, int * mOut, int * mArgs){
     //I hash is not built yet, must build first
     if (basicHashBuilt == 0) {
         //Build hash table
+        //cout << "Starting Hash Agg\n";
         while (true){
             int * mInput = op->next();
             if (mInput){
@@ -1616,6 +1645,7 @@ int * hashAggFxnBasic(Operation * me, int * mOut, int * mArgs){
         
     bAggMap.clear();
     basicHashBuilt = 0;
+    //cout << "Ending Hash Agg\n";
     return nullptr;    
 }
 

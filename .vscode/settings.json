@@ -44,6 +44,9 @@
         "random": "cpp",
         "string": "cpp",
         "chrono": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "ctime": "cpp",
+        "list": "cpp",
+        "ratio": "cpp"
     }
 }

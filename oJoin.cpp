@@ -5,6 +5,10 @@
 // #include <fstream>
 // #include <iostream>
 #include "oJoin.h"
+#include <iostream>
+#include <chrono> 
+
+using namespace std;
 
 /**************
  * Constructor
@@ -36,11 +40,17 @@ int oJoin::open(){
     }
 
     outTuple = new int[colCount];
+    oStart = high_resolution_clock::now();
+    oEnd = high_resolution_clock::now();
+    oDuration  = duration_cast<microseconds>(oEnd - oStart);
 }
 
 int * oJoin::next(){
+    oStart = high_resolution_clock::now();
     outTuple = nextFxn(this, outTuple, args);
     if (outTuple && showPrintout) print(outTuple, colCount, "-->");
+    oEnd = high_resolution_clock::now();
+    oDuration  += duration_cast<microseconds>(oEnd - oStart);
     return outTuple;
 }
 
@@ -48,6 +58,7 @@ void oJoin::close(){
     for (int i = 0; i < args[0]; i++){
         ops[i]->close();
     }
+    cout << "Total duration (join)  = " << oDuration.count()/1000 << "\n";
 }
 
 int oJoin::tSize(){
