@@ -16,7 +16,7 @@ using namespace std;
  *************/
 oFScan::oFScan(string fileName){
     mFileName = fileName;
-    setPrint(false);
+    //setPrint(false);
 }
 
 /**************
@@ -29,9 +29,11 @@ int oFScan::open(){
         cerr << "Unable to generate file";
         return -1;
     }
-    file >> colSize;
-    file >> colSize;
-    tuple = new int [colSize];
+    int mColSize, mRowSize;
+    file >> mRowSize;
+    file >> mColSize;
+    setColSize(mColSize);
+    tuple = new int [getColCount()];
     
     oEnd = high_resolution_clock::now();
     oDuration  = duration_cast<microseconds>(oEnd - oStart);
@@ -48,7 +50,7 @@ int oFScan::getFileSize(){
 int * oFScan::next(){
     oStart = high_resolution_clock::now();
     if (file.good()){
-        for (int c = 0; c < colSize; c++){
+        for (int c = 0; c < getColCount(); c++){
             file >> tuple[c];
         }
         oEnd = high_resolution_clock::now();
@@ -61,39 +63,39 @@ int * oFScan::next(){
 }
 
 void oFScan::close(){ 
-    cout << "Total duration (fscan) = " << oDuration.count()/1000 << "\n";   
+    if (SHOW_SPEED) cout << "Total duration (fscan) = " << oDuration.count()/1000 << "\n";   
     delete tuple;
 }
 
-int oFScan::tSize(){
-    return colSize;
-}
+// int oFScan::getColCount(){
+//     return colSize;
+// }
 
-Operation * oFScan::getUpsOp(){
-    return nullptr;
-}
+// Operation * oFScan::getUpsOp(){
+//     return nullptr;
+// }
 
-Operation ** oFScan::getUpsOps(){
-    return nullptr;
-}
+// Operation ** oFScan::getUpsOps(){
+//     return nullptr;
+// }
 
-bool oFScan::getPrint(){
-    return showPrintout;
-}
-void oFScan::setPrint(bool sPrint){
-    showPrintout = sPrint;
-}
+// bool oFScan::getPrint(){
+//     return showPrintout;
+// }
+// void oFScan::setPrint(bool sPrint){
+//     showPrintout = sPrint;
+// }
 
-/**************
- * Helper
- *************/
-void oFScan::print(int * mPtr, int size, const char * mStr){
-    printf("%s: ", mStr);
-    for (int i = 0; i < size; i++){
-        printf("[%*d]", 3, mPtr[i]);            
-        fflush(stdout);
-    }
-    printf("\n");
-}
+// /**************
+//  * Helper
+//  *************/
+// void oFScan::print(int * mPtr, int size, const char * mStr){
+//     printf("%s: ", mStr);
+//     for (int i = 0; i < size; i++){
+//         printf("[%*d]", 3, mPtr[i]);            
+//         fflush(stdout);
+//     }
+//     printf("\n");
+// }
 
 

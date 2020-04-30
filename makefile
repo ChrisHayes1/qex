@@ -1,7 +1,7 @@
 CC=g++
 
-qexmake: oSpool.cpp oJoin.cpp oFScan.cpp oStdOp.cpp
-	$(CC) -o qex qex.cpp oSpool.cpp oJoin.cpp oFScan.cpp oStdOp.cpp
+qexmake: oSpool.cpp oFScan.cpp oGenericOp.cpp
+	$(CC) -o qex qex.cpp oSpool.cpp oFScan.cpp oGenericOp.cpp
 
 
 gen: gen_data.cpp

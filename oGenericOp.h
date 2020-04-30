@@ -6,12 +6,12 @@
 using namespace std;
 
 
-#ifndef O_JOIN_H
-#define O_JOIN_H
+#ifndef O_GENERIC_H
+#define O_GENERIC_H
 
 using namespace std::chrono; 
 
-class oJoin: public Operation {
+class oGenericOp: public Operation {
     public:
         //interface
         int open();
@@ -21,20 +21,17 @@ class oJoin: public Operation {
         //Class specific
         //Upstream op, fxn to be called, # columns in output, fxn args
         //fxnArgs - #args, #operators, col count, additional args
-        oJoin(Operation **, int * (*)(Operation *, int *, int *), int, int *);  
-        int tSize();  
-        void print(int *, int, const char *);        
-        void setPrint(bool);
-        bool getPrint();
-        Operation * getUpsOp();
-        Operation ** getUpsOps(); //returns upstream operation
+        oGenericOp(Operation *, int * (*)(Operation *, int *, int *), int, int *);  
+        oGenericOp(Operation **, int, int * (*)(Operation *, int *, int *), int, int *);  
+        
+        
     private:
-        int * args;
+        //int * args;
         //int current;
-        Operation ** ops;
+        // Operation ** ops;
         int * outTuple;
-        int colCount;
-        bool showPrintout;
+        // int colCount;
+        //bool showPrintout;
         //Fxn sent in - Upstream op, output tuple, Optional args (# args, args)
         //Args sent in --> if not null, 1st item = # args, followed by args
         int * (*nextFxn)(Operation *, int *, int *);

@@ -1,7 +1,7 @@
 /************************
  * TODO
  ************************
- * 1) Merge oJoin and oStdOp, I should be able to do this with one class
+ * 1) Merge oJoin and oGenericOp, I should be able to do this with one class
  * 2) Is there a way to remove the size fxn?  Only used on projection?
  ************************
 
@@ -23,8 +23,7 @@
 
 #include "oFScan.h"
 #include "oSpool.h"
-#include "oStdOp.h"
-#include "oJoin.h"
+#include "oGenericOp.h"
 //#include "oppManyToSome.h"
 //#include "oHashJoin.h"
 #include "iOperation.h"
@@ -36,7 +35,7 @@ using namespace std::chrono;
 /*############################
 # Constants
 ############################*/
-const int M_NULL = -1;
+//const int M_NULL = -1;
 const int ARG_START = 1;
 
 /*############################
@@ -62,13 +61,10 @@ void runQryD2Wide(string, int, int, int);
 void runQryDNarrow(string, int, int, int);
 void runQryE6Wide(string, int, int, int);
 
-// void runQryD(string, string, int, int, int);
 
-//Join Functions
+//Generic Fxns
 int * multiLineJoin(Operation *, int *, int *);
 int * singleLineJoin(Operation *, int *, int *);
-
-//StOp Fxns
 int * pivotFxn(Operation *, int *, int *);
 int * unPivotFxn(Operation *, int *, int *);
 int * hashDistFxn(Operation *, int *, int *);
@@ -84,7 +80,7 @@ int * removeNullFxn(Operation *, int *, int *);
 
 //Helper Functions
 std::vector<std::string> split(const std::string&, char);
-
+void RunMyQry(Operation *, bool);
 
 /*############################
 # Main
@@ -374,17 +370,8 @@ void menu(){
         //Stop tracking time and report
         auto stop = high_resolution_clock::now(); 
         auto duration = duration_cast<microseconds>(stop - start);
-        cout << "\nRun Time = " << duration.count() << " microseconds\n";
-        cout << "\nRun Time = " << duration.count()/1000 << " miliseconds\n";
-        
-        // Recording end time. 
-        // time(&end); 
-    
-        // // Calculating total time taken by the program. 
-        // double time_taken = double(end - start); 
-        // cout << "Time taken by program is : " << fixed 
-        //     << time_taken;
-        // cout << " sec " << endl; 
+        if (SHOW_SPEED) cout << "\nRun Time = " << duration.count() << " microseconds\n";
+        if (SHOW_SPEED) cout << "\nRun Time = " << duration.count()/1000 << " miliseconds\n";
     }
 }
 
@@ -496,12 +483,13 @@ int summarizeData(string fileName){
 void runQryA(string inFile){
     oFScan fileA(inFile); // Scan File
     // Agg results
-    oStdOp countA(&fileA, countFxn, 1, nullptr); 
+    oGenericOp countA(&fileA, countFxn, 1, nullptr); 
     //execute tree, show final output
-    oStdOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    displayResult.next();
-    displayResult.close();
+    RunMyQry(&countA, false);
+    // oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    // displayResult.open();
+    // displayResult.next();
+    // displayResult.close();
 }
 
 /**
@@ -530,7 +518,7 @@ void runQryB(string inFile, int sumColA, int sumColB){
     oFScan fileA(inFile); 
     //Project file down to A, B
     int prjAB [3] = {2, sumColA, sumColB};
-    oStdOp projectAB(&fileA, projectFxn, 2, prjAB);
+    oGenericOp projectAB(&fileA, projectFxn, 2, prjAB);
     sumColA = 1;
     sumColB = 2;    
     //Spool A, B
@@ -541,38 +529,41 @@ void runQryB(string inFile, int sumColA, int sumColB){
      ****/    
     //Project down to just A
     int prjA [2] = {1, sumColA};
-    oStdOp projectA(&spool, projectFxn, 1, prjA);    
+    oGenericOp projectA(&spool, projectFxn, 1, prjA);    
     //Remove null from A
     int rmvA = 1;
-    oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
+    oGenericOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
     //Count total number of args in A
-    oStdOp countA(&removeNullA, countFxn, 1, nullptr); 
+    oGenericOp countA(&removeNullA, countFxn, 1, nullptr); 
 
     /*****
      * Branch b
      ****/
     //Project down to just A
     int prjB [2] = {1, sumColB};
-    oStdOp projectB(&spool, projectFxn, 1, prjB);
+    oGenericOp projectB(&spool, projectFxn, 1, prjB);
     //Remove null from A
     int rmvB = 1;
-    oStdOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);    
+    oGenericOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);    
     //Count total number of args in B
-    oStdOp countB(&removeNullB, countFxn, 1, nullptr); 
+    oGenericOp countB(&removeNullB, countFxn, 1, nullptr); 
 
     /*****
      * Join A and B
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    Operation * joinOps[2] = {&countA, &countB};
-    int jArgs = 2; //send in exepcted # of operations
-    oJoin cartJoin(joinOps, singleLineJoin, -1, &jArgs);
+    int numArgs = 2; //send in exepcted # of operations
+    Operation * joinOps[numArgs] = {&countA, &countB};    
+    oGenericOp cartJoin(joinOps, numArgs, singleLineJoin, -1, nullptr);
+
     //Execute tree and display results
-    oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
-    displayResult.open();
-    displayResult.next();
-    displayResult.close();
+    RunMyQry(&cartJoin, false);
+    //oGenericOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+    
+    // displayResult.open();
+    // displayResult.next();
+    // displayResult.close();
 }
 
 
@@ -605,7 +596,7 @@ void runQryB(string inFile, int sumColA, int sumColB){
 //     oFScan fileA(inFile); 
 //     //Project file down to A, B, C
 //     int prjABC [4] = {3, sumColA, sumColB, sumColC};
-//     oStdOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
+//     oGenericOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
 //     sumColA = 1;
 //     sumColB = 2;    
 //     sumColC = 3;  
@@ -617,17 +608,17 @@ void runQryB(string inFile, int sumColA, int sumColB){
 //      ****/
 //     //Project down to just A
 //     int prjA [2] = {1, sumColA};
-//     oStdOp projectA(&spool, projectFxn, 1, prjA);    
+//     oGenericOp projectA(&spool, projectFxn, 1, prjA);    
 //     //Remove null from A
 //     int rmvA = 1; 
-//     oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
+//     oGenericOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
 //     //Sort
 //     int srtA = 1; //is item sorted yet, what col are we sorting on
-//     oStdOp sortA(&removeNullA, sortFxn, -1, &srtA);
+//     oGenericOp sortA(&removeNullA, sortFxn, -1, &srtA);
 //     //In stream duplicate removal
-//     oStdOp dupRemoveA(&sortA, removeDupFxn, -1, nullptr );
+//     oGenericOp dupRemoveA(&sortA, removeDupFxn, -1, nullptr );
 //     //Scala Count total number of args in A
-//     oStdOp countA(&dupRemoveA, countFxn, 1, nullptr); 
+//     oGenericOp countA(&dupRemoveA, countFxn, 1, nullptr); 
 //     //countA.setPrint(true);  
     
 //     /*****
@@ -635,17 +626,17 @@ void runQryB(string inFile, int sumColA, int sumColB){
 //      ****/    
 //     //Project down to just A
 //     int prjB [2] = {1, sumColB};
-//     oStdOp projectB(&spool, projectFxn, 1, prjB);
+//     oGenericOp projectB(&spool, projectFxn, 1, prjB);
 //     //Remove null from A
 //     int rmvB = 1; 
-//     oStdOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
+//     oGenericOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
 //     //Sort
 //     int srtB = 1; //is item sorted yet, what col are we sorting on
-//     oStdOp sortB(&removeNullB, sortFxn, -1, &srtB);
+//     oGenericOp sortB(&removeNullB, sortFxn, -1, &srtB);
 //     //In stream duplicate removal
-//     oStdOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
+//     oGenericOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
 //     //Count total number of args in B
-//     oStdOp countB(&dupRemoveB, countFxn, 1, nullptr); 
+//     oGenericOp countB(&dupRemoveB, countFxn, 1, nullptr); 
 //     //countB.setPrint(true);   
 
 //     /*****
@@ -653,17 +644,17 @@ void runQryB(string inFile, int sumColA, int sumColB){
 //      ****/    
 //     //Project down to just A
 //     int prjC [2] = {1, sumColC};
-//     oStdOp projectC(&spool, projectFxn, 1, prjC);
+//     oGenericOp projectC(&spool, projectFxn, 1, prjC);
 //     //Remove null from A
 //     int rmvC  = 1; 
-//     oStdOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
+//     oGenericOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
 //     //Sort
 //     int srtC = 1; //is item sorted yet, what col are we sorting on
-//     oStdOp sortC(&removeNullC, sortFxn, -1, &srtC);
+//     oGenericOp sortC(&removeNullC, sortFxn, -1, &srtC);
 //     //In stream duplicate removal
-//     oStdOp dupRemoveC(&sortC, removeDupFxn, -1, nullptr );
+//     oGenericOp dupRemoveC(&sortC, removeDupFxn, -1, nullptr );
 //     //Count total number of args in B
-//     oStdOp countC(&dupRemoveC, countFxn, 1, nullptr); 
+//     oGenericOp countC(&dupRemoveC, countFxn, 1, nullptr); 
     
 
 //     /*****
@@ -678,8 +669,8 @@ void runQryB(string inFile, int sumColA, int sumColB){
 //     int jArgs [1] = {3}; //send in exepcted # of operations
 //     oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
 //     //Execute tree and display results
-//     oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
-//     //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+//     oGenericOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+//     //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
 //     displayResult.open();
 //     displayResult.next();
 //     displayResult.close();
@@ -690,7 +681,7 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     oFScan fileA(inFile); 
     //Project file down to A, B, C
     int prjABC [4] = {3, sumColA, sumColB, sumColC};
-    oStdOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
+    oGenericOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
     sumColA = 1;
     sumColB = 2;    
     sumColC = 3;  
@@ -702,15 +693,15 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
      ****/
     //Project down to just A
     int prjA [2] = {1, sumColA};
-    oStdOp projectA(&spool, projectFxn, 1, prjA);    
+    oGenericOp projectA(&spool, projectFxn, 1, prjA);    
     //Remove null from A
     int rmvA = 1; 
-    oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);        
+    oGenericOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);        
     // //In stream duplicate removal
-    oStdOp dupRemoveA(&removeNullA, hashDistFxn, -1, nullptr );
+    oGenericOp dupRemoveA(&removeNullA, hashDistFxn, -1, nullptr );
     
     //Scala Count total number of args in A
-    oStdOp countA(&dupRemoveA, countFxn, 1, nullptr); 
+    oGenericOp countA(&dupRemoveA, countFxn, 1, nullptr); 
     //countA.setPrint(true);  
     
     /*****
@@ -718,16 +709,16 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
      ****/    
     //Project down to just A
     int prjB [2] = {1, sumColB};
-    oStdOp projectB(&spool, projectFxn, 1, prjB);
+    oGenericOp projectB(&spool, projectFxn, 1, prjB);
     //Remove null from A
     int rmvB = 1; 
-    oStdOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
+    oGenericOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
     //Sort
     int srtB = 1; //is item sorted yet, what col are we sorting on
     //In stream duplicate removal
-    oStdOp dupRemoveB(&removeNullB, hashDistFxn, -1, nullptr );
+    oGenericOp dupRemoveB(&removeNullB, hashDistFxn, -1, nullptr );
     //Count total number of args in B
-    oStdOp countB(&dupRemoveB, countFxn, 1, nullptr); 
+    oGenericOp countB(&dupRemoveB, countFxn, 1, nullptr); 
     //countB.setPrint(true);   
 
     /*****
@@ -735,16 +726,16 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
      ****/    
     //Project down to just A
     int prjC [2] = {1, sumColC};
-    oStdOp projectC(&spool, projectFxn, 1, prjC);
+    oGenericOp projectC(&spool, projectFxn, 1, prjC);
     //Remove null from A
     int rmvC  = 1; 
-    oStdOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
+    oGenericOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
     //Sort
     int srtC = 1; //is item sorted yet, what col are we sorting on
     //In stream duplicate removal
-    oStdOp dupRemoveC(&removeNullC, hashDistFxn, -1, nullptr );
+    oGenericOp dupRemoveC(&removeNullC, hashDistFxn, -1, nullptr );
     //Count total number of args in B
-    oStdOp countC(&dupRemoveC, countFxn, 1, nullptr); 
+    oGenericOp countC(&dupRemoveC, countFxn, 1, nullptr); 
     
 
     /*****
@@ -752,18 +743,19 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    Operation * joinOps[3];
+    int numOps = 3;
+    Operation * joinOps[numOps];
     joinOps[0] = &countA;
     joinOps[1] = &countB;
-    joinOps[2] = &countC;
-    int jArgs [1] = {3}; //send in exepcted # of operations
-    oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
+    joinOps[2] = &countC;    
+    oGenericOp cartJoin(joinOps, numOps, singleLineJoin, -1, nullptr);
     //Execute tree and display results
-    oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    displayResult.next();
-    displayResult.close();
+    RunMyQry(&cartJoin, false);
+    // oGenericOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+    // //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    // displayResult.open();
+    // displayResult.next();
+    // displayResult.close();
 }
 
 /**
@@ -774,7 +766,7 @@ void runQryCNarrow(string inFile, int sumColA, int sumColB, int sumColC){
     oFScan fileA(inFile); 
     //Project file down to A, B, C
     int prjABC [4] = {3, sumColA, sumColB, sumColC};
-    oStdOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
+    oGenericOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
     sumColA = 1;
     sumColB = 2;    
     sumColC = 3;  
@@ -783,30 +775,30 @@ void runQryCNarrow(string inFile, int sumColA, int sumColB, int sumColC){
      * Pivot
      *****/
     int unpiv = 0; //Send in group on rows
-    oStdOp unPivot(&projectABC, unPivotFxn, unpiv + 2, &unpiv);
+    oGenericOp unPivot(&projectABC, unPivotFxn, unpiv + 2, &unpiv);
 
     //Remove null from A
     int rmvCol  = 2; 
-    oStdOp removeNull(&unPivot, removeNullFxn, -1, &rmvCol);  
+    oGenericOp removeNull(&unPivot, removeNullFxn, -1, &rmvCol);  
     
     //Hash Distinct - duplicate removal
-    oStdOp hashDist(&removeNull, hashDistFxn, -1, nullptr);
+    oGenericOp hashDist(&removeNull, hashDistFxn, -1, nullptr);
 
     //Hash agg A, B
-    oStdOp hashAgg(&hashDist, hashAggFxnBasic, -1, &sumColA);
-    // oStdOp hashAgg(&removeNull, hashAggFxnBasic, -1, &sumColA);
+    oGenericOp hashAgg(&hashDist, hashAggFxnBasic, -1, &sumColA);
+    // oGenericOp hashAgg(&removeNull, hashAggFxnBasic, -1, &sumColA);
     hashAgg.setPrint(true);
 
     //unpivot
     int piv[2] = {1, 0}; //# group cols, group on cols
-    oStdOp pivot(&hashAgg, pivotFxn, 3, piv);
+    oGenericOp pivot(&hashAgg, pivotFxn, 3, piv);
     
-
-    oStdOp displayResult(&pivot, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    while(displayResult.next());
-    displayResult.close();
+    RunMyQry(&pivot, true);
+    // oGenericOp displayResult(&pivot, displayFxn, -1, nullptr);
+    // //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    // displayResult.open();
+    // while(displayResult.next());
+    // displayResult.close();
 }
 
 
@@ -846,24 +838,24 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
     int prjAB [3] = {2, ColA, ColB};
     int ColAMod = 1;
     int ColBMod = 2;
-    oStdOp projectAB(&spool, projectFxn, 2, prjAB);
+    oGenericOp projectAB(&spool, projectFxn, 2, prjAB);
     //Remove null from B
-    oStdOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
+    oGenericOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
     //Hash agg A, B
-    oStdOp hashAggB(&removeNullB, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggB(&removeNullB, hashAggFxnBasic, 2, &ColAMod);
 
     /*****
      * Count Distinct B
      ****/
     //project down to a, b
     int prjABDist [3] = {2, ColA, ColB};    
-    oStdOp projectABDist(&spool, projectFxn, 2, prjABDist);
+    oGenericOp projectABDist(&spool, projectFxn, 2, prjABDist);
     //Remove null from B
-    oStdOp removeNullBDist(&projectABDist, removeNullFxn, -1, &ColBMod);  
+    oGenericOp removeNullBDist(&projectABDist, removeNullFxn, -1, &ColBMod);  
     //Hash Distincts
-    oStdOp hashDistB(&removeNullBDist, hashDistFxn, -1, nullptr);
+    oGenericOp hashDistB(&removeNullBDist, hashDistFxn, -1, nullptr);
     //Hash agg A, B
-    oStdOp hashAggBDist(&hashDistB, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggBDist(&hashDistB, hashAggFxnBasic, 2, &ColAMod);
     
 
     /*****
@@ -872,12 +864,12 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
     //project down to A, C
     int prjAC [3] = {2, ColA, ColC};
     int ColCMod = 2;
-    oStdOp projectAC(&spool, projectFxn, 2, prjAC);
+    oGenericOp projectAC(&spool, projectFxn, 2, prjAC);
     //Remove null from C
-    oStdOp removeNullC(&projectAC, removeNullFxn, 1, &ColCMod);  
+    oGenericOp removeNullC(&projectAC, removeNullFxn, 1, &ColCMod);  
     //Hash agg A, B
     //int paramAggC[3] = {1, 0, ColAMod};
-    oStdOp hashAggC(&removeNullC, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggC(&removeNullC, hashAggFxnBasic, 2, &ColAMod);
 
 
     /*****
@@ -885,15 +877,15 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
      ****/
     //project down to a, C
     int prjACDist [3] = {2, ColA, ColC};    
-    oStdOp projectACDist(&spool, projectFxn, 2, prjACDist);
+    oGenericOp projectACDist(&spool, projectFxn, 2, prjACDist);
     //Remove null from C
-    oStdOp removeNullCDist(&projectACDist, removeNullFxn, -1, &ColCMod);  
+    oGenericOp removeNullCDist(&projectACDist, removeNullFxn, -1, &ColCMod);  
     //removeNullCDist.setPrint(true);
     //Hash Distincts
-    oStdOp hashDistC(&removeNullCDist, hashDistFxn, -1, nullptr);
+    oGenericOp hashDistC(&removeNullCDist, hashDistFxn, -1, nullptr);
     //hashDistC.setPrint(true);
     //Hash agg A, B
-    oStdOp hashAggCDist(&hashDistC, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggCDist(&hashDistC, hashAggFxnBasic, 2, &ColAMod);
     //hashAggCDist.setPrint(true);
     
     /*****
@@ -901,15 +893,16 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    Operation * joinOps[4];
+    int numOps = 4;
+    Operation * joinOps[numOps];
     joinOps[0] = &hashAggB;
     joinOps[1] = &hashAggBDist;
     joinOps[2] = &hashAggC;
     joinOps[3] = &hashAggCDist;
     int jArgs [3] = {4, 0, ColAMod}; //send in exepcted # of operations
-    oJoin multiJoin(joinOps, multiLineJoin, jArgs[0]+1, jArgs);
+    oGenericOp multiJoin(joinOps, numOps, multiLineJoin, jArgs[0]+1, jArgs);
 
-    oStdOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
+    oGenericOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
 
     /*****
      * Run and display results
@@ -917,8 +910,8 @@ void runQryD4Wide(string inFile, int ColA, int ColB, int ColC){
 
 
     //Execute tree and display results
-    oStdOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     while(displayResult.next());
     displayResult.close();
@@ -945,15 +938,15 @@ void runQryD2Wide(string inFile, int sumColA, int sumColB, int sumColC){
     int prjAB [3] = {2, sumColA, sumColB};
     int ColAMod = 1;
     int ColBMod = 2;
-    oStdOp projectAB(&spool, projectFxn, 2, prjAB);
+    oGenericOp projectAB(&spool, projectFxn, 2, prjAB);
     //Remove null from B
-    oStdOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
+    oGenericOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
     //Hash agg on A B
     int paramAggB[4] = {2, 0, ColAMod, ColBMod};
-    oStdOp hashAggB(&removeNullB, hashAggFxn, 3, paramAggB);
+    oGenericOp hashAggB(&removeNullB, hashAggFxn, 3, paramAggB);
     //Hash agg on A, but count occurences (COUNT distcint) and sum count (COUNT)
     int paramSumCountB[3] = {1, 1, ColAMod};
-    oStdOp hashSumCountB(&hashAggB, hashSumCountFxn, 3, paramSumCountB);
+    oGenericOp hashSumCountB(&hashAggB, hashSumCountFxn, 3, paramSumCountB);
     
     /*****
      * Count C, C Distinct
@@ -961,15 +954,15 @@ void runQryD2Wide(string inFile, int sumColA, int sumColB, int sumColC){
     //project down to a, c
     int prjAC [3] = {2, sumColA, sumColC};
     int ColCMod = 2;
-    oStdOp projectAC(&spool, projectFxn, 2, prjAC);
+    oGenericOp projectAC(&spool, projectFxn, 2, prjAC);
     //Remove null from C
-    oStdOp removeNullC(&projectAC, removeNullFxn, -1, &ColCMod);  
+    oGenericOp removeNullC(&projectAC, removeNullFxn, -1, &ColCMod);  
     //Hash agg on A C
     int paramAggC[4] = {2, 0, ColAMod, ColCMod};
-    oStdOp hashAggC(&removeNullC, hashAggFxn, 3, paramAggC);
+    oGenericOp hashAggC(&removeNullC, hashAggFxn, 3, paramAggC);
     //Hash agg on A, but count occurences (COUNT distcint) and sum count (COUNT)
     int paramSumCountC[3] = {1, 1, ColAMod};
-    oStdOp hashSumCountC(&hashAggC, hashSumCountFxn, 3, paramSumCountC);
+    oGenericOp hashSumCountC(&hashAggC, hashSumCountFxn, 3, paramSumCountC);
 
 
     /*****
@@ -977,20 +970,21 @@ void runQryD2Wide(string inFile, int sumColA, int sumColB, int sumColC){
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    Operation * joinOps[2];
+    int numOps = 2;
+    Operation * joinOps[numOps];
     joinOps[0] = &hashSumCountB;
     joinOps[1] = &hashSumCountC;    
     int jArgs [3] = {2, 0, ColAMod}; //send in exepcted # of operations
-    oJoin multiJoin(joinOps, multiLineJoin, 5, jArgs);
+    oGenericOp multiJoin(joinOps, numOps, multiLineJoin, 5, jArgs);
 
-    oStdOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
+    oGenericOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
 
     /*****
      * Run and display results
      ****/
     //Execute tree and display results
-    oStdOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     while(displayResult.next());
     displayResult.close();
@@ -1004,7 +998,7 @@ void runQryDNarrow(string inFile, int sumColA, int sumColB, int sumColC){
     oFScan fileA(inFile); 
     //Project file down to A, B, C
     int prjABC [4] = {3, sumColA, sumColB, sumColC};
-    oStdOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
+    oGenericOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
     sumColA = 1;
     sumColB = 2;    
     sumColC = 3;  
@@ -1013,27 +1007,27 @@ void runQryDNarrow(string inFile, int sumColA, int sumColB, int sumColC){
      * Pivot
      *****/
     int unpiv[2] = {1, sumColA}; //Send in group on rows
-    oStdOp unPivot(&projectABC, unPivotFxn, unpiv[0] + 2, unpiv);
+    oGenericOp unPivot(&projectABC, unPivotFxn, unpiv[0] + 2, unpiv);
     //unPivot.setPrint(true);
 
     // Remove null from A
     int rmvCol  = 3; 
-    oStdOp removeNull(&unPivot, removeNullFxn, -1, &rmvCol);  
+    oGenericOp removeNull(&unPivot, removeNullFxn, -1, &rmvCol);  
     //Hash agg on A B
     int paramAgg[5] = {3, 0, sumColA, sumColB, sumColC};
-    oStdOp hashAgg(&removeNull, hashAggFxn, 4, paramAgg);
+    oGenericOp hashAgg(&removeNull, hashAggFxn, 4, paramAgg);
     //Hash agg on A, but count occurences (COUNT distcint) and sum count (COUNT)
     int paramSumCount[4] = {2, 1, sumColA, sumColB};
-    oStdOp hashSumCount(&hashAgg, hashSumCountFxn, 4, paramSumCount);
+    oGenericOp hashSumCount(&hashAgg, hashSumCountFxn, 4, paramSumCount);
     //hashSumCount.setPrint(true);
     //unpivot
     int piv[3] = {2, 1, sumColA}; //# group cols, group on cols
     //int piv[2] = {1, 0}; //# group cols, group on cols
-    oStdOp pivot(&hashSumCount, pivotFxn, 5, piv);
-    oStdOp sortOut(&pivot, sortFxn, -1, &sumColA);
+    oGenericOp pivot(&hashSumCount, pivotFxn, 5, piv);
+    oGenericOp sortOut(&pivot, sortFxn, -1, &sumColA);
 
-    oStdOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     while(displayResult.next());
     displayResult.close();
@@ -1073,16 +1067,16 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
      * Count *
      ****/
     // All we need is to run hash aggregation on colA
-    oStdOp hashAggAll(&spool, hashAggFxnBasic, 2, &ColA);
+    oGenericOp hashAggAll(&spool, hashAggFxnBasic, 2, &ColA);
     
     
     /*****
      * Count distinct*
      ****/
     //Hash Distinct
-    oStdOp hashAllDist(&spool, hashDistFxn, -1, nullptr);
+    oGenericOp hashAllDist(&spool, hashDistFxn, -1, nullptr);
     //Hash Aggregate    
-    oStdOp hashAggAllDist(&hashAllDist, hashAggFxnBasic, 2, &ColA);
+    oGenericOp hashAggAllDist(&hashAllDist, hashAggFxnBasic, 2, &ColA);
 
     /*****
      * Count B
@@ -1091,24 +1085,24 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
     int prjAB [3] = {2, ColA, ColB};
     int ColAMod = 1;
     int ColBMod = 2;
-    oStdOp projectAB(&spool, projectFxn, 2, prjAB);
+    oGenericOp projectAB(&spool, projectFxn, 2, prjAB);
     //Remove null from B
-    oStdOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
+    oGenericOp removeNullB(&projectAB, removeNullFxn, -1, &ColBMod);  
     //Hash agg A, B
-    oStdOp hashAggB(&removeNullB, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggB(&removeNullB, hashAggFxnBasic, 2, &ColAMod);
 
     /*****
      * Count Distinct B
      ****/
     //project down to a, b
     int prjABDist [3] = {2, ColA, ColB};    
-    oStdOp projectABDist(&spool, projectFxn, 2, prjABDist);
+    oGenericOp projectABDist(&spool, projectFxn, 2, prjABDist);
     //Remove null from B
-    oStdOp removeNullBDist(&projectABDist, removeNullFxn, -1, &ColBMod);  
+    oGenericOp removeNullBDist(&projectABDist, removeNullFxn, -1, &ColBMod);  
     //Hash Distincts
-    oStdOp hashDistB(&removeNullBDist, hashDistFxn, -1, nullptr);
+    oGenericOp hashDistB(&removeNullBDist, hashDistFxn, -1, nullptr);
     //Hash agg A, B
-    oStdOp hashAggBDist(&hashDistB, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggBDist(&hashDistB, hashAggFxnBasic, 2, &ColAMod);
 
     /*****
      * Count C
@@ -1116,26 +1110,26 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
     //project down to A, C
     int prjAC [3] = {2, ColA, ColC};
     int ColCMod = 2;
-    oStdOp projectAC(&spool, projectFxn, 2, prjAC);
+    oGenericOp projectAC(&spool, projectFxn, 2, prjAC);
     //Remove null from C
-    oStdOp removeNullC(&projectAC, removeNullFxn, -1, &ColCMod);  
+    oGenericOp removeNullC(&projectAC, removeNullFxn, -1, &ColCMod);  
     //Hash agg A, B
-    oStdOp hashAggC(&removeNullC, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggC(&removeNullC, hashAggFxnBasic, 2, &ColAMod);
 
     /*****
      * Count Distinct C
      ****/
     //project down to a, C
     int prjACDist [3] = {2, ColA, ColC};    
-    oStdOp projectACDist(&spool, projectFxn, 2, prjACDist);
+    oGenericOp projectACDist(&spool, projectFxn, 2, prjACDist);
     //Remove null from C
-    oStdOp removeNullCDist(&projectACDist, removeNullFxn, -1, &ColCMod);  
+    oGenericOp removeNullCDist(&projectACDist, removeNullFxn, -1, &ColCMod);  
     //removeNullCDist.setPrint(true);
     //Hash Distincts
-    oStdOp hashDistC(&removeNullCDist, hashDistFxn, -1, nullptr);
+    oGenericOp hashDistC(&removeNullCDist, hashDistFxn, -1, nullptr);
     //hashDistC.setPrint(true);
     //Hash agg A, B
-    oStdOp hashAggCDist(&hashDistC, hashAggFxnBasic, 2, &ColAMod);
+    oGenericOp hashAggCDist(&hashDistC, hashAggFxnBasic, 2, &ColAMod);
     //hashAggCDist.setPrint(true);
     
     /*****
@@ -1143,7 +1137,8 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
      * May need to think about how this would work with a group by
      * Would this join be different than a join between two tables?
      ****/    
-    Operation * joinOps[6];
+    int numOps = 6;
+    Operation * joinOps[numOps];
     joinOps[0] = &hashAggAll;
     joinOps[1] = &hashAggAllDist;
     joinOps[2] = &hashAggB;
@@ -1151,16 +1146,16 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
     joinOps[4] = &hashAggC;
     joinOps[5] = &hashAggCDist;
     int jArgs [3] = {6, 0, ColAMod}; //send in exepcted # of operations
-    oJoin multiJoin(joinOps, multiLineJoin, 7, jArgs);
+    oGenericOp multiJoin(joinOps,numOps,  multiLineJoin, 7, jArgs);
 
-    oStdOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
+    oGenericOp sortOut(&multiJoin, sortFxn, -1, &ColAMod);
 
     /*****
      * Run and display results
      ****/
     //Execute tree and display results
-    oStdOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
     while(displayResult.next());
     displayResult.close();
@@ -1184,6 +1179,19 @@ vector<string> split(const string& s, char delimiter)
 }
 
 
+void RunMyQry(Operation * mOp, bool runMultiple){
+    oGenericOp displayResult(mOp, displayFxn, -1, nullptr);
+    displayResult.open();
+    displayResult.setPrint(true);
+    int * mResult;
+    mResult = displayResult.next();
+    while(mResult && runMultiple){
+        mResult = displayResult.next();
+    }
+
+    displayResult.close();
+}
+
 /*############################
 # Multi Op Functions
 ############################*/
@@ -1196,11 +1204,11 @@ int * singleLineJoin(Operation * me, int * mOut, int * mArgs){
 
     //Itterate through ops
     int count = 0;
-    for (int i = 0; i < mArgs[0]; i++){
+    for (int i = 0; i < me->getNumOps(); i++){
         int * mInput  = op[i]->next();        
         if (mInput){
             //Itterate through tuples in op and add to output
-            for (int c = 0; c < op[i]->tSize(); c++){
+            for (int c = 0; c < op[i]->getColCount(); c++){
                 mOut[count] = mInput[c];
                 count++;
             }
@@ -1210,6 +1218,7 @@ int * singleLineJoin(Operation * me, int * mOut, int * mArgs){
     }    
 
     if (me->getPrint()) cout << "   join";
+    if (!mOut) if (me->getPrint()) cout << "   join nullptr\n";
     fflush(stdout);
     return mOut;
 }
@@ -1240,7 +1249,7 @@ int * multiLineJoin(Operation * me, int * mOut, int * mArgs){
         int colA = mArgs[2] - 1; //id which col is col A
         // Identify size of final tuple
         for (int i = 0; i < mArgs[0]; i++){
-            numCols += (op[i]->tSize()-1);            
+            numCols += (op[i]->getColCount()-1);            
         }
         numCols ++; //add 1 for group by col
 
@@ -1262,7 +1271,7 @@ int * multiLineJoin(Operation * me, int * mOut, int * mArgs){
                     mHashNode = joinMap[mInput[colA]];
                 }                
                 //Itterate through tuples in op and add to output
-                for (int c = 0; c < op[i]->tSize(); c++){
+                for (int c = 0; c < op[i]->getColCount(); c++){
                     //Check key and see if it has already been added
                     if (c != colA){ //all cols for first operator, skip colA for rest
                         mHashNode[mCount+c] = mInput[c];
@@ -1274,7 +1283,7 @@ int * multiLineJoin(Operation * me, int * mOut, int * mArgs){
                 joinMap[mInput[colA]] = mHashNode;                
                 mInput  = op[i]->next();                 
             }        
-            mCount += op[i]->tSize() - 1; //update count            
+            mCount += op[i]->getColCount() - 1; //update count            
         }
         //done building hash table
         joinI = joinMap.begin();
@@ -1320,18 +1329,18 @@ int * multiLineJoin(Operation * me, int * mOut, int * mArgs){
  * Prints out final output
  ***/
 int * displayFxn(Operation * me, int * mOut, int * mIgnore){
-    Operation * op = me->getUpsOp();
-    me->setPrint(true);
+    Operation * op = me->getUpsOp();    
+    me->setPrint(true);    
     int * mInput = op->next();
     if (mInput) {   
         cout << "   $T";
-        for (int i = 0; i < me->tSize(); i++){
+        for (int i = 0; i < me->getColCount(); i++){
             mOut[i] = mInput[i];
         }
         return mOut;
-    }     
+    }         
     me->setPrint(false);
-    return mInput;
+    return nullptr;
 }
 
 
@@ -1373,10 +1382,10 @@ int * pivotFxn(Operation * me, int * mOut, int * mArgs){
             bool newKey = (pivMap.count(mKey) == 0);
             //Key needs to be added
             if (newKey){
-                mHashNode = new int [me->tSize()];
+                mHashNode = new int [me->getColCount()];
                 //Set to 0 because we are alway unpivoting counts
                 //But this would be problemeatic if we wanted to pivot\unpivot
-                for (int c = 0; c < me->tSize(); c++){
+                for (int c = 0; c < me->getColCount(); c++){
                     mHashNode[c] = 0;
                 }                
                 //Go ahead and set the keys                    
@@ -1397,12 +1406,12 @@ int * pivotFxn(Operation * me, int * mOut, int * mArgs){
             //Column offset is -1
             //Columns being populated = size of incoming tuple - # grouping col - 1 (for index)
             int cursor = 0;
-            int pivColCount = op->tSize() - numGroups - 1;
+            int pivColCount = op->getColCount() - numGroups - 1;
             for (int i = 0; i < pivColCount; i++){
                 cursor = numGroups + (mInput[index] - 1)*pivColCount + i;
-                mHashNode[cursor] = mInput[op->tSize()-(pivColCount-i)];
+                mHashNode[cursor] = mInput[op->getColCount()-(pivColCount-i)];
             }
-            //mHashNode[mArgs[1] + mInput[mArgs[0]- 1] - 1] = mInput[op->tSize()-1];
+            //mHashNode[mArgs[1] + mInput[mArgs[0]- 1] - 1] = mInput[op->getColCount()-1];
 
             //Add node back to hash table
             pivMap[mKey] = mHashNode; 
@@ -1458,7 +1467,7 @@ int * unPivotFxn(Operation * me, int * mOut, int * mArgs){
         mOut[mArgs[0]] = cursor+1-mArgs[0];
         mOut[mArgs[0]+1] = current[cursor];
         cursor++;
-        if ( cursor > (me->tSize() - mArgs[0])) cursor = 0;
+        if ( cursor > (me->getColCount() - mArgs[0])) cursor = 0;
         if (me->getPrint()) cout << "   unpiv";
         return mOut;
     }
@@ -1484,10 +1493,10 @@ int * removeDupFxn(Operation * me, int * mOut, int * mIgnore){
 
     while (mInput){
         bool tMatch = !(dupPrev == nullptr);
-        for (int i = 0; i < op->tSize() && tMatch; i++)
+        for (int i = 0; i < op->getColCount() && tMatch; i++)
             tMatch &= (dupPrev[i] == mInput[i]);            
         if (!tMatch) { // Unique
-            for (int i = 0; i < op->tSize(); i++){
+            for (int i = 0; i < op->getColCount(); i++){
                 mOut[i] = mInput[i];
                 dupPrev = mOut;
             }
@@ -1519,7 +1528,7 @@ int * hashDistFxn(Operation * me, int * mOut, int * mIgnore){
         mInput = op->next();                
         if (mInput){
             mKey = "";            
-            for (int i = 0; i < op->tSize(); i++){
+            for (int i = 0; i < op->getColCount(); i++){
                 mKey = mKey + to_string(mInput[i]) + " ";        
             }                        
         } else {
@@ -1563,9 +1572,9 @@ int * hashAggFxn(Operation * me, int * mOut, int * mArgs){
                 bool newKey = (aggMap.count(mKey) == 0);
                 //Key needs to be added
                 if (newKey){
-                    mHashNode = new int [me->tSize()];
+                    mHashNode = new int [me->getColCount()];
                     //Set to null in case we don't have a value
-                    for (int c = 0; c < me->tSize(); c++){
+                    for (int c = 0; c < me->getColCount(); c++){
                         mHashNode[c] = 0;
                     }                
                     //Go ahead and set the keys                    
@@ -1573,13 +1582,13 @@ int * hashAggFxn(Operation * me, int * mOut, int * mArgs){
                         mHashNode[i] = mInput[mArgs[2+i]-1];
                     } 
                     // Set initial values
-                    mHashNode[me->tSize()-1] = 1;
-                    if (mArgs[1] == 1) mHashNode[me->tSize()-2] = mInput[op->tSize()-1];
+                    mHashNode[me->getColCount()-1] = 1;
+                    if (mArgs[1] == 1) mHashNode[me->getColCount()-2] = mInput[op->getColCount()-1];
                 } else {
                     //Key already added
                     mHashNode = aggMap[mKey];                                    
-                    mHashNode[me->tSize()-1]++;
-                    if (mArgs[1] == 1) mHashNode[me->tSize()-2] += mInput[op->tSize()-1];
+                    mHashNode[me->getColCount()-1]++;
+                    if (mArgs[1] == 1) mHashNode[me->getColCount()-2] += mInput[op->getColCount()-1];
                 } 
                 aggMap[mKey] = mHashNode;                
                 //aggMap[mKey]++;
@@ -1640,9 +1649,9 @@ int * hashSumCountFxn(Operation * me, int * mOut, int * mArgs){
                 bool newKey = (sumCountMap.count(mKey) == 0);
                 //Key needs to be added
                 if (newKey){
-                    mHashNode = new int [me->tSize()];
+                    mHashNode = new int [me->getColCount()];
                     //Set to null in case we don't have a value
-                    for (int c = 0; c < me->tSize(); c++){
+                    for (int c = 0; c < me->getColCount(); c++){
                         mHashNode[c] = 0;
                     }                
                     //Go ahead and set the keys                    
@@ -1650,13 +1659,13 @@ int * hashSumCountFxn(Operation * me, int * mOut, int * mArgs){
                         mHashNode[i] = mInput[mArgs[2+i]-1];
                     } 
                     // Set initial values
-                    mHashNode[me->tSize()-1] = 1;
-                    if (mArgs[1] == 1) mHashNode[me->tSize()-2] = mInput[op->tSize()-1];
+                    mHashNode[me->getColCount()-1] = 1;
+                    if (mArgs[1] == 1) mHashNode[me->getColCount()-2] = mInput[op->getColCount()-1];
                 } else {
                     //Key already added
                     mHashNode = sumCountMap[mKey];                                    
-                    mHashNode[me->tSize()-1]++;
-                    if (mArgs[1] == 1) mHashNode[me->tSize()-2] += mInput[op->tSize()-1];
+                    mHashNode[me->getColCount()-1]++;
+                    if (mArgs[1] == 1) mHashNode[me->getColCount()-2] += mInput[op->getColCount()-1];
                 } 
                 sumCountMap[mKey] = mHashNode;                
                 //sumCountMap[mKey]++;
@@ -1740,10 +1749,10 @@ int * sortFxn(Operation * me, int * mOut, int * mArgs){
     //Sort must consume all tuples prior to releasing output
     if (isSorted == 0)    {
         while (true){
-            int * mInput = new int [op->tSize()];            
+            int * mInput = new int [op->getColCount()];            
             int * temp = op->next();            
             if (temp){
-                for (int i = 0; i < op->tSize(); i++){
+                for (int i = 0; i < op->getColCount(); i++){
                     mInput[i] = temp[i];
                 }
                 sortList.push_back(mInput);
@@ -1792,6 +1801,8 @@ int * countFxn(Operation * me, int * mOut,
             mOut[0] ++;                            
             mInput = op->next();
         }   
+        if (me->getPrint()) cout << "   count";
+        fflush(stdout);
         return mOut;
     }     
     return nullptr;
@@ -1810,9 +1821,10 @@ int * projectFxn(Operation * me, int * mOut, int * mArgs){
             mOut[i] = mInput[mArgs[i+1] -1];
         }
         if (me->getPrint()) cout << "   prj";
+        fflush(stdout);
         return mOut;
     }
-    return mInput;
+    return nullptr;
 }
 
 
@@ -1820,7 +1832,7 @@ int * projectFxn(Operation * me, int * mOut, int * mArgs){
  * Checks single column for null value, if present
  * does not pass downstream
  * @param args[]: Column we are checking for null
- * @return: Upstream op, if args[1] is not null
+ * @return: Upstream op, if args[1ks] is not null
  ***/
 int * removeNullFxn(Operation * me, int * mOut, int * mArgs){   
     Operation * op = me->getUpsOp();
@@ -1831,6 +1843,7 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
         mInput = op->next();
     } 
     if (me->getPrint()) cout << "   rmvNull";
+    fflush(stdout);
     return mInput;    
 }
 
@@ -1840,7 +1853,6 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
  ****************************
  *  2) Make op->open cascade return error codes, specifically to fail
  *     reasonably if bad file (or check on input)
- *  3) Combine Join and StdOp.  Possible add in file scan or spool?
  *  4) Add appropriate headers to all functions
  *  5) run valgrind and ?? (check OS reqs)
  *      Ran valgrind, hemoraging memory on hash functions
@@ -1848,4 +1860,16 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
  *     I should be able to combine them into 1 function? 
  *  7) Make it so I can send data structurs in
  *      b) Remove second hash agg function. 
+ * 
+ ***************************
+ * Modify abstract class
+ *  1) Allow open to return value on file scan fail
+ *  2) Allow operator to have multi typed params?
+ *      - Need to send hash tables and other data structures in
+ *      - Same param as args, or seperate?
+ ****************************
+ * Add help section to menu
+ * Toggle preformance details?
+ * After conversions above retest valgrind and see what I need to clean up
+ * Comment and style
  ****************************/

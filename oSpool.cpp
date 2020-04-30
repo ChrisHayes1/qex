@@ -18,9 +18,9 @@ using namespace std::chrono;
 /**************
  * Constructor
  *************/
-oSpool::oSpool(Operation * mOp){
-    op = mOp;
-    setPrint(false);
+oSpool::oSpool(Operation * mOp) : Operation {mOp, nullptr}{
+    //op = mOp;
+    
     rewound = false;
     isOpened = false;
 }
@@ -31,7 +31,7 @@ oSpool::oSpool(Operation * mOp){
 int oSpool::open(){   
     if (!isOpened){
         op->open();
-        colSize = op->tSize();
+        setColSize(op->getColCount());
         init_list();
         isOpened = true;
 
@@ -49,17 +49,18 @@ int * oSpool::next(){
     //pointers are pointing to the same stack memory in the previous app.  I need
     //to transfer the filestream data to its own location in the heap
     oStart = high_resolution_clock::now();
+    
     if (!rewound){
          int * temp;
         temp = op->next();
 
         //
         if (temp){
-            int * mTuple = new int [colSize];
-            for (int c = 0; c < colSize; c++){
+            int * mTuple = new int [getColCount()];
+            for (int c = 0; c < getColCount(); c++){
                 mTuple[c] = temp[c];
             }
-            if (mTuple && showPrintout) print(mTuple, colSize, "-->");
+            if (mTuple && showPrintout) print(mTuple, getColCount(), "-->");
 
             if (mTuple) enQ(mTuple);
             //print(mTuple, colSize, "   tContents");
@@ -79,6 +80,7 @@ int * oSpool::next(){
             current = current->next;
             oEnd = high_resolution_clock::now();
             oDuration  += duration_cast<microseconds>(oEnd - oStart);
+
             return temp;
         }     
         rewind();
@@ -94,44 +96,44 @@ void oSpool::close(){
         close_list(); //Do we need to move?
         op->close();
         op = nullptr;
-        cout << "Total duration (Spool) = " << oDuration.count()/1000 << "\n";
+        if (SHOW_SPEED) cout << "Total duration (Spool) = " << oDuration.count()/1000 << "\n";
     }    
 }
 
-int oSpool::tSize(){
-    return colSize;
-}
+// int oSpool::getColCount(){
+//     return colSize;
+// }
 
 //Returns upstream operator
-Operation * oSpool::getUpsOp(){
-    return op;
-}
+// Operation * oSpool::getUpsOp(){
+//     return op;
+// }
 
-Operation ** oSpool::getUpsOps(){
-    return nullptr;
-}
+// Operation ** oSpool::getUpsOps(){
+//     return nullptr;
+// }
 
-bool oSpool::getPrint(){
-    return showPrintout;
-}
+// bool oSpool::getPrint(){
+//     return showPrintout;
+// }
 
-void oSpool::setPrint(bool sPrint){
-    showPrintout = sPrint;
-}
+// void oSpool::setPrint(bool sPrint){
+//     showPrintout = sPrint;
+// }
 
 
 /**************
  * Helper
  *************/
-void oSpool::print(int * mPtr, int size, const char * mStr){
-    fflush(stdout);
-    for (int i = 0; i < size; i++){
-        printf("[%*d]", 3, mPtr[i]);            
-        fflush(stdout);
-    }
-    printf("\n");
-    fflush(stdout);
-}
+// void oSpool::print(int * mPtr, int size, const char * mStr){
+//     fflush(stdout);
+//     for (int i = 0; i < size; i++){
+//         printf("[%*d]", 3, mPtr[i]);            
+//         fflush(stdout);
+//     }
+//     printf("\n");
+//     fflush(stdout);
+// }
 
 void oSpool::rewind(){
     rewound = true;
@@ -181,7 +183,7 @@ void oSpool::printsList(){
     node * temp;
     temp = head;        
     while(temp){
-        print(temp->tuple, colSize, "   tContents");
+        print(temp->tuple, getColCount(), "   tContents");
         temp = temp->next;
     }
 }
