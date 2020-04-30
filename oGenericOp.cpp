@@ -35,19 +35,25 @@ oGenericOp::oGenericOp(Operation ** mOps, int numOps,  int * (*mNextFxn)(Operati
 
 int oGenericOp::open(){
     int getSize = getColCount();
+    bool badOpen = false;
     if (getSize == -1){
         setColSize(0);   
         //else setColSize(op->getColCount());     
     }
     for (int i = 0; i < numOps; i++){
-        ops[i]->open();
+        if (ops[i]->open() == -1) badOpen = true;
         if (getSize == -1) setColSize(getColCount() + ops[i]->getColCount());
     }
+
     // cout << "Join has size of " << getColCount() << " and getSize = " << getSize << "\n";
     outTuple = new int[getColCount()];
     oStart = high_resolution_clock::now();
     oEnd = high_resolution_clock::now();
     oDuration  = duration_cast<microseconds>(oEnd - oStart);
+    if (badOpen){
+        return -1;
+    }
+    return 0;
 }
 
 int * oGenericOp::next(){
@@ -64,6 +70,7 @@ void oGenericOp::close(){
     for (int i = 0; i < numOps; i++){
         ops[i]->close();
     }
+    delete outTuple;
     if (SHOW_SPEED) cout << "Total duration (join)  = " << oDuration.count()/1000 << "\n";
 }
 

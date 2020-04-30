@@ -983,11 +983,12 @@ void runQryD2Wide(string inFile, int sumColA, int sumColB, int sumColC){
      * Run and display results
      ****/
     //Execute tree and display results
-    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    while(displayResult.next());
-    displayResult.close();
+    RunMyQry(&sortOut, true);
+    // oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    // //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    // displayResult.open();
+    // while(displayResult.next());
+    // displayResult.close();
 }
 
 /**
@@ -1026,11 +1027,13 @@ void runQryDNarrow(string inFile, int sumColA, int sumColB, int sumColC){
     oGenericOp pivot(&hashSumCount, pivotFxn, 5, piv);
     oGenericOp sortOut(&pivot, sortFxn, -1, &sumColA);
 
-    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    while(displayResult.next());
-    displayResult.close();
+    RunMyQry(&sortOut, true);
+    // oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    // //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    
+    // displayResult.open();
+    // while(displayResult.next());
+    // displayResult.close();
 }
 
 
@@ -1154,11 +1157,12 @@ void runQryE6Wide(string inFile, int ColA, int ColB, int ColC){
      * Run and display results
      ****/
     //Execute tree and display results
-    oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
-    //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
-    displayResult.open();
-    while(displayResult.next());
-    displayResult.close();
+    RunMyQry(&sortOut, true);
+    // oGenericOp displayResult(&sortOut, displayFxn, -1, nullptr);
+    // //oGenericOp displayResult(&countA, displayFxn, -1, nullptr);
+    // displayResult.open();
+    // while(displayResult.next());
+    // displayResult.close();
 }
 
 /*############################
@@ -1179,17 +1183,27 @@ vector<string> split(const string& s, char delimiter)
 }
 
 
+/*******
+ * Executes displayResult with mOp as upstream operator
+ * @param mOp: upstream operator
+ * @param runMultiple: Loop on next.  Not going to lie, should always
+ *                      work with while (mResult) but wasn't. This
+ *                      was an easy fix.
+ *****/
 void RunMyQry(Operation * mOp, bool runMultiple){
     oGenericOp displayResult(mOp, displayFxn, -1, nullptr);
-    displayResult.open();
-    displayResult.setPrint(true);
-    int * mResult;
-    mResult = displayResult.next();
-    while(mResult && runMultiple){
+    int mResult = displayResult.open();
+    if (mResult != -1){
+        displayResult.setPrint(true);
+        int * mResult;
         mResult = displayResult.next();
-    }
+        while(mResult && runMultiple){
+            mResult = displayResult.next();
+        }        
+    } 
 
     displayResult.close();
+        
 }
 
 /*############################
@@ -1872,4 +1886,5 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
  * Toggle preformance details?
  * After conversions above retest valgrind and see what I need to clean up
  * Comment and style
+ * Rename Operation to Operator
  ****************************/

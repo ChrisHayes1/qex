@@ -30,7 +30,8 @@ oSpool::oSpool(Operation * mOp) : Operation {mOp, nullptr}{
  *************/
 int oSpool::open(){   
     if (!isOpened){
-        op->open();
+        bool badOpen = false;
+        if (op->open() == -1) badOpen = true;
         setColSize(op->getColCount());
         init_list();
         isOpened = true;
@@ -38,6 +39,11 @@ int oSpool::open(){
         oStart = high_resolution_clock::now();
         oEnd = high_resolution_clock::now();
         oDuration  = duration_cast<microseconds>(oEnd - oStart);
+
+        if (badOpen){
+            return -1;
+        }
+        return 0;
     }
 }
 

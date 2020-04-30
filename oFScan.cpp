@@ -23,17 +23,20 @@ oFScan::oFScan(string fileName){
  * Interface
  *************/
 int oFScan::open(){
+    setColSize(0);
     oStart = high_resolution_clock::now();
+    tuple = new int [getColCount()];
     file.open(mFileName);
     if (!file){
-        cerr << "Unable to generate file";
+        cerr << "Unable to open file\n";
+        fflush(stderr);
         return -1;
     }
     int mColSize, mRowSize;
     file >> mRowSize;
     file >> mColSize;
     setColSize(mColSize);
-    tuple = new int [getColCount()];
+    
     
     oEnd = high_resolution_clock::now();
     oDuration  = duration_cast<microseconds>(oEnd - oStart);
