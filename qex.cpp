@@ -495,10 +495,8 @@ int summarizeData(string fileName){
  ***/
 void runQryA(string inFile){
     oFScan fileA(inFile); // Scan File
-    oSpool spoolA(&fileA); // Spool results
     // Agg results
-    oStdOp countA(&spoolA, countFxn, 1, nullptr); 
-
+    oStdOp countA(&fileA, countFxn, 1, nullptr); 
     //execute tree, show final output
     oStdOp displayResult(&countA, displayFxn, -1, nullptr);
     displayResult.open();
@@ -602,6 +600,91 @@ void runQryB(string inFile, int sumColA, int sumColB){
  *                       |
  *                   Single Row Join
  ***/
+// void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
+//     //Scan in file
+//     oFScan fileA(inFile); 
+//     //Project file down to A, B, C
+//     int prjABC [4] = {3, sumColA, sumColB, sumColC};
+//     oStdOp projectABC(&fileA, projectFxn, prjABC[0], prjABC);
+//     sumColA = 1;
+//     sumColB = 2;    
+//     sumColC = 3;  
+//     //Spool A, B
+//     oSpool spool(&projectABC);
+    
+//     /*****
+//      * Branch A
+//      ****/
+//     //Project down to just A
+//     int prjA [2] = {1, sumColA};
+//     oStdOp projectA(&spool, projectFxn, 1, prjA);    
+//     //Remove null from A
+//     int rmvA = 1; 
+//     oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
+//     //Sort
+//     int srtA = 1; //is item sorted yet, what col are we sorting on
+//     oStdOp sortA(&removeNullA, sortFxn, -1, &srtA);
+//     //In stream duplicate removal
+//     oStdOp dupRemoveA(&sortA, removeDupFxn, -1, nullptr );
+//     //Scala Count total number of args in A
+//     oStdOp countA(&dupRemoveA, countFxn, 1, nullptr); 
+//     //countA.setPrint(true);  
+    
+//     /*****
+//      * Branch b
+//      ****/    
+//     //Project down to just A
+//     int prjB [2] = {1, sumColB};
+//     oStdOp projectB(&spool, projectFxn, 1, prjB);
+//     //Remove null from A
+//     int rmvB = 1; 
+//     oStdOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
+//     //Sort
+//     int srtB = 1; //is item sorted yet, what col are we sorting on
+//     oStdOp sortB(&removeNullB, sortFxn, -1, &srtB);
+//     //In stream duplicate removal
+//     oStdOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
+//     //Count total number of args in B
+//     oStdOp countB(&dupRemoveB, countFxn, 1, nullptr); 
+//     //countB.setPrint(true);   
+
+//     /*****
+//      * Branch C
+//      ****/    
+//     //Project down to just A
+//     int prjC [2] = {1, sumColC};
+//     oStdOp projectC(&spool, projectFxn, 1, prjC);
+//     //Remove null from A
+//     int rmvC  = 1; 
+//     oStdOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
+//     //Sort
+//     int srtC = 1; //is item sorted yet, what col are we sorting on
+//     oStdOp sortC(&removeNullC, sortFxn, -1, &srtC);
+//     //In stream duplicate removal
+//     oStdOp dupRemoveC(&sortC, removeDupFxn, -1, nullptr );
+//     //Count total number of args in B
+//     oStdOp countC(&dupRemoveC, countFxn, 1, nullptr); 
+    
+
+//     /*****
+//      * Join A and B
+//      * May need to think about how this would work with a group by
+//      * Would this join be different than a join between two tables?
+//      ****/    
+//     Operation * joinOps[3];
+//     joinOps[0] = &countA;
+//     joinOps[1] = &countB;
+//     joinOps[2] = &countC;
+//     int jArgs [1] = {3}; //send in exepcted # of operations
+//     oJoin cartJoin(joinOps, singleLineJoin, -1, jArgs);
+//     //Execute tree and display results
+//     oStdOp displayResult(&cartJoin, displayFxn, -1, nullptr);
+//     //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
+//     displayResult.open();
+//     displayResult.next();
+//     displayResult.close();
+// }
+
 void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     //Scan in file
     oFScan fileA(inFile); 
@@ -622,12 +705,10 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     oStdOp projectA(&spool, projectFxn, 1, prjA);    
     //Remove null from A
     int rmvA = 1; 
-    oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);    
-    //Sort
-    int srtA = 1; //is item sorted yet, what col are we sorting on
-    oStdOp sortA(&removeNullA, sortFxn, -1, &srtA);
-    //In stream duplicate removal
-    oStdOp dupRemoveA(&sortA, removeDupFxn, -1, nullptr );
+    oStdOp removeNullA(&projectA, removeNullFxn, 1, &rmvA);        
+    // //In stream duplicate removal
+    oStdOp dupRemoveA(&removeNullA, hashDistFxn, -1, nullptr );
+    
     //Scala Count total number of args in A
     oStdOp countA(&dupRemoveA, countFxn, 1, nullptr); 
     //countA.setPrint(true);  
@@ -643,9 +724,8 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     oStdOp removeNullB(&projectB, removeNullFxn, 1, &rmvB);  
     //Sort
     int srtB = 1; //is item sorted yet, what col are we sorting on
-    oStdOp sortB(&removeNullB, sortFxn, -1, &srtB);
     //In stream duplicate removal
-    oStdOp dupRemoveB(&sortB, removeDupFxn, -1, nullptr );
+    oStdOp dupRemoveB(&removeNullB, hashDistFxn, -1, nullptr );
     //Count total number of args in B
     oStdOp countB(&dupRemoveB, countFxn, 1, nullptr); 
     //countB.setPrint(true);   
@@ -661,9 +741,8 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     oStdOp removeNullC(&projectC, removeNullFxn, 1, &rmvC);  
     //Sort
     int srtC = 1; //is item sorted yet, what col are we sorting on
-    oStdOp sortC(&removeNullC, sortFxn, -1, &srtC);
     //In stream duplicate removal
-    oStdOp dupRemoveC(&sortC, removeDupFxn, -1, nullptr );
+    oStdOp dupRemoveC(&removeNullC, hashDistFxn, -1, nullptr );
     //Count total number of args in B
     oStdOp countC(&dupRemoveC, countFxn, 1, nullptr); 
     
@@ -686,7 +765,6 @@ void runQryCWideSort(string inFile, int sumColA, int sumColB, int sumColC){
     displayResult.next();
     displayResult.close();
 }
-
 
 /**
  * QryC, but narrow grouping plan instead of bushy 
@@ -941,22 +1019,18 @@ void runQryDNarrow(string inFile, int sumColA, int sumColB, int sumColC){
     // Remove null from A
     int rmvCol  = 3; 
     oStdOp removeNull(&unPivot, removeNullFxn, -1, &rmvCol);  
-    
     //Hash agg on A B
     int paramAgg[5] = {3, 0, sumColA, sumColB, sumColC};
     oStdOp hashAgg(&removeNull, hashAggFxn, 4, paramAgg);
-
     //Hash agg on A, but count occurences (COUNT distcint) and sum count (COUNT)
     int paramSumCount[4] = {2, 1, sumColA, sumColB};
     oStdOp hashSumCount(&hashAgg, hashSumCountFxn, 4, paramSumCount);
     //hashSumCount.setPrint(true);
-
     //unpivot
     int piv[3] = {2, 1, sumColA}; //# group cols, group on cols
     //int piv[2] = {1, 0}; //# group cols, group on cols
     oStdOp pivot(&hashSumCount, pivotFxn, 5, piv);
     oStdOp sortOut(&pivot, sortFxn, -1, &sumColA);
-
 
     oStdOp displayResult(&sortOut, displayFxn, -1, nullptr);
     //oStdOp displayResult(&countA, displayFxn, -1, nullptr);
@@ -1460,7 +1534,6 @@ int * hashDistFxn(Operation * me, int * mOut, int * mIgnore){
 
 /**
  * Aggregates based on a grouping column.  Currently based on
- * single column key, but multi-column keys could be developed
  * using cheat-key approach used in hash distinct (hashDistFxn)
  * 
  * @param mArgs[0]: # of Grouping Column
@@ -1709,7 +1782,8 @@ int * sortFxn(Operation * me, int * mOut, int * mArgs){
  *  Count total number of tuples, return count only
  * Single next call itterates through all upstream data
  ****/
-int * countFxn(Operation * me, int * mOut, int * mIgnore){
+int * countFxn(Operation * me, int * mOut, 
+                            int * mIgnore){
     Operation * op = me->getUpsOp();
     mOut[0] = 0;    
     int * mInput = op->next();
@@ -1718,7 +1792,6 @@ int * countFxn(Operation * me, int * mOut, int * mIgnore){
             mOut[0] ++;                            
             mInput = op->next();
         }   
-        if (me->getPrint()) cout << "   countFxn";
         return mOut;
     }     
     return nullptr;
@@ -1765,11 +1838,14 @@ int * removeNullFxn(Operation * me, int * mOut, int * mArgs){
 /****************************
  * To Do
  ****************************
- *  1) I am not sure anything uses the count for # of args
- *      so I could take out
  *  2) Make op->open cascade return error codes, specifically to fail
  *     reasonably if bad file (or check on input)
  *  3) Combine Join and StdOp.  Possible add in file scan or spool?
  *  4) Add appropriate headers to all functions
  *  5) run valgrind and ?? (check OS reqs)
+ *      Ran valgrind, hemoraging memory on hash functions
+ *  6) Multi-line join and pivot are pretty much the same thing
+ *     I should be able to combine them into 1 function? 
+ *  7) Make it so I can send data structurs in
+ *      b) Remove second hash agg function. 
  ****************************/
