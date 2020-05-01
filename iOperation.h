@@ -27,14 +27,14 @@ class Operation {
         Operation(){
             setPrint(false);
         }
-        Operation(Operation * mOp, int * mArgs) : Operation{}{
+        Operation(Operation * mOp, void * mArgs) : Operation{}{
             args = mArgs;            
             numOps = 1;
             Operation * mOps[numOps];
             mOps[0] = mOp;            
             setOps(mOps);
         }
-        Operation(Operation ** mOps, int mNumOps, int * mArgs) : Operation{}{
+        Operation(Operation ** mOps, int mNumOps, void * mArgs) : Operation{}{
             args = mArgs;   
             numOps = mNumOps;
             setOps(mOps);
@@ -78,7 +78,7 @@ class Operation {
         int numOps;
         bool showPrintout; // Show detailed printout
         int colCount;  // Total # of columns in out tuple
-        int * args = nullptr;
+        void * args = nullptr;
         
 };
 

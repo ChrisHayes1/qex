@@ -14,15 +14,15 @@ using namespace std;
  * Constructor
  *************/
 
-oGenericOp::oGenericOp(Operation * mOp, int * (*mNextFxn)(Operation *, int *, int *), 
-                int mColCount, int * mArgs) : Operation{mOp, mArgs} {    
+oGenericOp::oGenericOp(Operation * mOp, int * (*mNextFxn)(Operation *, int *, void *), 
+                int mColCount, void * mArgs) : Operation{mOp, mArgs} {    
     nextFxn = mNextFxn;
     setColSize(mColCount);
 }
 
 
-oGenericOp::oGenericOp(Operation ** mOps, int numOps,  int * (*mNextFxn)(Operation *, int *, int *), 
-                int mColCount, int * mArgs) : Operation {mOps, numOps, mArgs}{    
+oGenericOp::oGenericOp(Operation ** mOps, int numOps,  int * (*mNextFxn)(Operation *, int *, void *), 
+                int mColCount, void * mArgs) : Operation {mOps, numOps, mArgs}{    
     nextFxn = mNextFxn;
     setColSize(mColCount);
 }

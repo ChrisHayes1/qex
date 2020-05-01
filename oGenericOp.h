@@ -21,8 +21,8 @@ class oGenericOp: public Operation {
         //Class specific
         //Upstream op, fxn to be called, # columns in output, fxn args
         //fxnArgs - #args, #operators, col count, additional args
-        oGenericOp(Operation *, int * (*)(Operation *, int *, int *), int, int *);  
-        oGenericOp(Operation **, int, int * (*)(Operation *, int *, int *), int, int *);  
+        oGenericOp(Operation *, int * (*)(Operation *, int *, void *), int, void *);  
+        oGenericOp(Operation **, int, int * (*)(Operation *, int *, void *), int, void *);  
         
         
     private:
@@ -34,7 +34,7 @@ class oGenericOp: public Operation {
         //bool showPrintout;
         //Fxn sent in - Upstream op, output tuple, Optional args (# args, args)
         //Args sent in --> if not null, 1st item = # args, followed by args
-        int * (*nextFxn)(Operation *, int *, int *);
+        int * (*nextFxn)(Operation *, int *, void *);
         time_point<high_resolution_clock> oStart;
         time_point<high_resolution_clock> oEnd;
         duration<double, micro> oDuration;
