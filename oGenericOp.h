@@ -22,16 +22,10 @@ class oGenericOp: public Operation {
         //Upstream op, fxn to be called, # columns in output, fxn args
         //fxnArgs - #args, #operators, col count, additional args
         oGenericOp(Operation *, int * (*)(Operation *, int *, void *), int, void *);  
-        oGenericOp(Operation **, int, int * (*)(Operation *, int *, void *), int, void *);  
-        
+        oGenericOp(Operation **, int, int * (*)(Operation *, int *, void *), int, void *);          
         
     private:
-        //int * args;
-        //int current;
-        // Operation ** ops;
         int * outTuple;
-        // int colCount;
-        //bool showPrintout;
         //Fxn sent in - Upstream op, output tuple, Optional args (# args, args)
         //Args sent in --> if not null, 1st item = # args, followed by args
         int * (*nextFxn)(Operation *, int *, void *);

@@ -4,9 +4,6 @@
  #      Can then rewind, at which point next() starts returning items from
  #      linked list.  
  ######################*/
-
-// #include <fstream>
-// #include <iostream>
 #include "oSpool.h"
 #include <sys/stat.h>
 #include <iostream>
@@ -50,32 +47,24 @@ int oSpool::open(){
 
 
 int * oSpool::next(){
-    //The issue seems to be that temp is creating a pointer to the tuple it is getting
-    //sent, but the tuple it is getting sent keeps changing.  So all the downstream
-    //pointers are pointing to the same stack memory in the previous app.  I need
-    //to transfer the filestream data to its own location in the heap
-    oStart = high_resolution_clock::now();
-    
+    oStart = high_resolution_clock::now();    
     if (!rewound){
          int * temp;
         temp = op->next();
-
-        //
         if (temp){
             int * mTuple = new int [getColCount()];
             for (int c = 0; c < getColCount(); c++){
                 mTuple[c] = temp[c];
             }
             if (mTuple && showPrintout) print(mTuple, getColCount(), "-->");
-
             if (mTuple) enQ(mTuple);
-            //print(mTuple, colSize, "   tContents");
-            
+            //set clock to 0            
             oEnd = high_resolution_clock::now();
             oDuration  += duration_cast<microseconds>(oEnd - oStart);
             return mTuple;
         }
         rewind();
+        //track run time
         oEnd = high_resolution_clock::now();
         oDuration  += duration_cast<microseconds>(oEnd - oStart);
         return nullptr;
@@ -86,15 +75,13 @@ int * oSpool::next(){
             current = current->next;
             oEnd = high_resolution_clock::now();
             oDuration  += duration_cast<microseconds>(oEnd - oStart);
-
             return temp;
         }     
         rewind();
         oEnd = high_resolution_clock::now();
         oDuration  += duration_cast<microseconds>(oEnd - oStart);
         return nullptr;        
-    }
-    
+    }    
 }
 
 void oSpool::close(){    
@@ -106,41 +93,10 @@ void oSpool::close(){
     }    
 }
 
-// int oSpool::getColCount(){
-//     return colSize;
-// }
-
-//Returns upstream operator
-// Operation * oSpool::getUpsOp(){
-//     return op;
-// }
-
-// Operation ** oSpool::getUpsOps(){
-//     return nullptr;
-// }
-
-// bool oSpool::getPrint(){
-//     return showPrintout;
-// }
-
-// void oSpool::setPrint(bool sPrint){
-//     showPrintout = sPrint;
-// }
-
 
 /**************
  * Helper
  *************/
-// void oSpool::print(int * mPtr, int size, const char * mStr){
-//     fflush(stdout);
-//     for (int i = 0; i < size; i++){
-//         printf("[%*d]", 3, mPtr[i]);            
-//         fflush(stdout);
-//     }
-//     printf("\n");
-//     fflush(stdout);
-// }
-
 void oSpool::rewind(){
     rewound = true;
     current = head;
@@ -149,20 +105,15 @@ void oSpool::rewind(){
 /**************
  * Linked List
  *************/
-
-
-
 void oSpool::init_list(){
     head = nullptr;
     end = nullptr;
 }
 
 void oSpool::enQ(int * mTuple){
-    
     node * temp = new node;
     temp->tuple = mTuple;
     temp->next = nullptr;
-
     if (head == nullptr) {
         head = temp;
         end = temp;
@@ -176,7 +127,6 @@ void oSpool::close_list(){
     node * current, * next;
     current = head;
     next = current;
-
     while (current){
         next = current->next;
         delete current->tuple;

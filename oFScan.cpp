@@ -16,7 +16,6 @@ using namespace std;
  *************/
 oFScan::oFScan(string fileName){
     mFileName = fileName;
-    //setPrint(false);
 }
 
 /**************
@@ -36,11 +35,8 @@ int oFScan::open(){
     file >> mRowSize;
     file >> mColSize;
     setColSize(mColSize);
-    
-    
     oEnd = high_resolution_clock::now();
     oDuration  = duration_cast<microseconds>(oEnd - oStart);
-
     return getFileSize();
 }
 
@@ -69,36 +65,3 @@ void oFScan::close(){
     if (SHOW_SPEED) cout << "Total duration (fscan) = " << oDuration.count()/1000 << "\n";   
     delete tuple;
 }
-
-// int oFScan::getColCount(){
-//     return colSize;
-// }
-
-// Operation * oFScan::getUpsOp(){
-//     return nullptr;
-// }
-
-// Operation ** oFScan::getUpsOps(){
-//     return nullptr;
-// }
-
-// bool oFScan::getPrint(){
-//     return showPrintout;
-// }
-// void oFScan::setPrint(bool sPrint){
-//     showPrintout = sPrint;
-// }
-
-// /**************
-//  * Helper
-//  *************/
-// void oFScan::print(int * mPtr, int size, const char * mStr){
-//     printf("%s: ", mStr);
-//     for (int i = 0; i < size; i++){
-//         printf("[%*d]", 3, mPtr[i]);            
-//         fflush(stdout);
-//     }
-//     printf("\n");
-// }
-
-

@@ -23,19 +23,11 @@ class oSpool: public Operation {
 
         //Class specific
         oSpool(Operation *);  //Need a pointer at init
-        // int tSize();  
-        // Operation * getUpsOp(); //returns upstream operation
-        // Operation ** getUpsOps();
-        // void setPrint(bool);
-        // bool getPrint();
-        // void print(int *, int, const char *);
         //Set col we want to pull on itteration, bring back to start if not
         //initial pass
         void rewind();  
         
     private:
-        // Operation * op;        
-        // int colSize;
         int * tuple;
 
         time_point<high_resolution_clock> oStart;
@@ -45,17 +37,13 @@ class oSpool: public Operation {
         node * head;
         node * end;
         node * current;
-        //bool showPrintout;
         bool rewound;
         bool isOpened;
-
+        // linked list
         void init_list();
         void enQ(int *);
         void close_list();
         void printsList();
         
 };
-
-
-
 #endif

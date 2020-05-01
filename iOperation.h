@@ -11,8 +11,6 @@ const bool SHOW_SPEED = false;
 /*############################
 # Abstract operations class
 ############################*/
-
-
 class Operation {
 
     public:
@@ -27,6 +25,7 @@ class Operation {
         Operation(){
             setPrint(false);
         }
+        //Ops with single upstream op
         Operation(Operation * mOp, void * mArgs) : Operation{}{
             args = mArgs;            
             numOps = 1;
@@ -34,18 +33,19 @@ class Operation {
             mOps[0] = mOp;            
             setOps(mOps);
         }
+        //Ops with multiple upstream ops (such as joins);
         Operation(Operation ** mOps, int mNumOps, void * mArgs) : Operation{}{
             args = mArgs;   
             numOps = mNumOps;
             setOps(mOps);
         }
 
+        //set upstream op or ops
         void setOps(Operation ** mOps){
             ops = new Operation * [numOps];
             for (int i = 0; i < numOps; i++){
                 ops[i] = mOps[i];
             }
-            
             op = ops[0];
         }
         
@@ -75,7 +75,7 @@ class Operation {
         //Shared attributes
         Operation ** ops; // List of upstream operators
         Operation * op; // Single upstream operator
-        int numOps;
+        int numOps; // Number of upstream ops that feed into me
         bool showPrintout; // Show detailed printout
         int colCount;  // Total # of columns in out tuple
         void * args = nullptr;
@@ -83,17 +83,3 @@ class Operation {
 };
 
 #endif
-
-/***
- * Create super classes recognizing key operation archtypes
- *  1) Reduction - Open carries out processing, creates new tuple(s), next just returns pointer
- *      a) Aggregates such as count, containg one 'running cout' tuple that is sent on next
- *      b) Group by and other ops that reduce numerous tuples down.  May be able to run per group instead of on open?
- *      c) Distinct operations? If sorted distinct would not need to run on open.  Could add to hash as you go
- *          and check for duplicates
- *  2) Tuples modified as they come (via next)
- *      a) Tuple sent in from previous op, manipulated, sent on
- *      b) tuple(s) sent in, new tuple sent out (joins)
- *  3) Generation of data - scans
- * 
- ****/

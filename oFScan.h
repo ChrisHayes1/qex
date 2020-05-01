@@ -18,20 +18,11 @@ class oFScan: public Operation {
 
         //Class specific
         oFScan(string);  
-        // int tSize();  
-        // Operation * getUpsOp(); //returns upstream operation
-        // Operation ** getUpsOps();
-        // void print(int *, int, const char *);
-        // void setPrint(bool);
-        // bool getPrint();
         int getFileSize();
     private:
-        //Operation * op;        
         string mFileName;
         ifstream file;
-        // int colSize;
         int * tuple;
-        //bool showPrintout;
         time_point<high_resolution_clock> oStart;
         time_point<high_resolution_clock> oEnd;
         duration<double, micro> oDuration;
